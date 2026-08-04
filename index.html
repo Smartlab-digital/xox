@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>XOX — вещи и услуги меняются людьми</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="logo" href="#top" aria-label="XOX">XO<span>×</span></a>
+    <nav><a href="#catalog">Каталог</a><a href="#how">Как это работает</a><a href="#community">Сообщество</a></nav>
+    <div class="header-actions"><button class="location">⌖ Москва</button><button class="login">Войти</button><button class="add-button" data-modal="listing">＋ Разместить</button></div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow"><i></i> социальная сеть вещей и услуг</div>
+        <h1>Вещи не стоят.<br><em>Они меняют мир.</em></h1>
+        <p>Отдавайте то, чем не пользуетесь. Находите то, что нужно. Меняйтесь напрямую — даже если сделка в три шага.</p>
+        <div class="search-box">
+          <span class="search-icon">⌕</span><input id="search" placeholder="Что вы ищете? Например, велосипед" autocomplete="off"><button id="searchButton">Найти</button>
+          <div id="suggestions" class="suggestions"></div>
+        </div>
+        <div class="popular"><span>Популярное:</span><button>велосипед</button><button>мастер-класс</button><button>ноутбук</button></div>
+      </div>
+      <div class="hero-art" aria-label="Коллаж популярных объявлений">
+        <div class="sun"></div><div class="orb one"></div><div class="orb two"></div>
+        <article class="floating card-camera"><div class="art camera-art">●</div><small>В обмен</small><b>Плёночная камера</b><span>⚡ 18 обменов</span></article>
+        <article class="floating card-chair"><div class="art chair-art">⌑</div><small>Даром</small><b>Кресло 60-х</b><span>♡ 124</span></article>
+        <article class="floating card-service"><div class="avatar">М</div><b>Час дизайна</b><span>за 1 500 ₽</span></article>
+        <div class="swap-bubble">↔ <span>обмен<br>запущен</span></div>
+      </div>
+    </section>
+
+    <section class="quick-cats" aria-label="Категории">
+      <button><span class="cat-icon orange">⌘</span>Вещи <b>28 451</b></button><button><span class="cat-icon green">✦</span>Услуги <b>9 208</b></button><button><span class="cat-icon purple">↔</span>Обмены <b>3 684</b></button><button><span class="cat-icon blue">◌</span>Рядом с вами <b>1 029</b></button>
+    </section>
+
+    <section id="catalog" class="catalog section">
+      <div class="section-head"><div><div class="eyebrow"><i></i> сейчас в обмене</div><h2>Хорошие вещи ждут<br>новых историй</h2></div><a href="#" class="all-link">Смотреть всё <span>→</span></a></div>
+      <div class="filters"><button class="active">Все</button><button>Вещи</button><button>Услуги</button><button>Обмен</button><button>Продажа</button><button>Отдам даром</button></div>
+      <div id="listingGrid" class="listing-grid"></div>
+    </section>
+
+    <section id="how" class="exchange section">
+      <div class="exchange-intro"><div class="eyebrow light"><i></i> умный обмен</div><h2>Не нашли прямой<br>обмен? <em>Найдём путь.</em></h2><p>XOX выстраивает цепочки из вещей и услуг, чтобы каждый получил именно то, что ищет.</p><button class="white-button" id="openChain">Построить цепочку <span>→</span></button></div>
+      <div class="chain-visual"><div class="path p1"></div><div class="path p2"></div><div class="chain-item bike">🚲<b>Ваш велосипед</b><small>у вас</small></div><div class="chain-item tv">📺<b>Телевизор</b><small>у Ильи</small></div><div class="chain-item moto">🏍️<b>Мотоцикл</b><small>вы хотите</small></div><div class="chain-note">3 шага<br><span>до мечты</span></div></div>
+    </section>
+
+    <section class="section value"><div class="value-graphic"><div class="price-tag">3 000 ₽</div><div class="scissors">✂</div><div class="equals">=</div><div class="hours"><b>3</b><span>часа<br>работы</span></div></div><div class="value-copy"><div class="eyebrow"><i></i> ценность в действии</div><h2>Знания и время<br>тоже <em>имеют вес.</em></h2><p>Укажите стоимость своей услуги — мы покажем, на что её можно обменять. Три часа работы парикмахера могут стать новыми ножницами.</p><a href="#" class="text-link">Узнать больше <span>→</span></a></div></section>
+
+    <section id="community" class="community"><div><div class="eyebrow"><i></i> люди xox</div><h2>Вместе вещей<br>становится <em>больше.</em></h2></div><div class="community-stats"><div><b>41 280</b><span>участников</span></div><div><b>68 594</b><span>вещи и услуги</span></div><div><b>12 043</b><span>счастливых обмена</span></div></div></section>
+  </main>
+  <footer><a class="logo" href="#top">XO<span>×</span></a><span>© 2024 XOX. Вещи для людей.</span><div><a href="#">Правила</a><a href="#">Помощь</a><a href="#">ВКонтакте</a></div></footer>
+
+  <dialog id="listingModal"><button class="close" aria-label="Закрыть">×</button><div class="modal-icon">＋</div><h3>Разместить объявление</h3><p>В демо-версии форма покажет, как будет выглядеть процесс публикации.</p><form id="listingForm"><label>Название<input required placeholder="Например, горный велосипед"></label><label>Тип<select><option>Вещь</option><option>Услуга</option></select></label><label>Операция<select><option>Обмен</option><option>Продажа</option><option>Отдам даром</option></select></label><button>Продолжить</button></form></dialog>
+  <dialog id="chainModal"><button class="close" aria-label="Закрыть">×</button><div class="modal-icon">↔</div><h3>Ваш маршрут обмена</h3><p>Расскажите, что отдаёте и что хотите получить — XOX подберёт подходящие цепочки до 4 шагов.</p><form><label>У меня есть<input placeholder="Велосипед"></label><label>Я ищу<input placeholder="Мотоцикл"></label><button>Найти варианты</button></form></dialog>
+  <div id="toast" role="status"></div><script src="app.js"></script>
+</body>
+</html>
+
