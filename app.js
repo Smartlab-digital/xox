@@ -49,7 +49,7 @@ document.querySelectorAll('.popular button').forEach(button => button.addEventLi
 
 const toast = document.querySelector('#toast');
 function notice(text) { if (!toast) return; toast.textContent=text; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
-document.querySelectorAll('[data-modal="listing"]').forEach(x => x.addEventListener('click', () => document.querySelector('#listingModal')?.showModal()));
+document.querySelectorAll('[data-modal="listing"]').forEach(x => x.addEventListener('click', () => { location.href = 'add-listing.html'; }));
 document.querySelector('#openChain')?.addEventListener('click', () => document.querySelector('#chainModal')?.showModal());
 document.querySelectorAll('dialog .close').forEach(x => x.addEventListener('click', () => x.closest('dialog').close()));
 document.querySelectorAll('dialog form').forEach(x => x.addEventListener('submit', e => { e.preventDefault(); x.closest('dialog').close(); notice('Готово! Заявка сохранена.'); }));
