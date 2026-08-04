@@ -1,22 +1,87 @@
-const listings=[
- {title:'Винтажный проигрыватель',type:'Обмен',price:'на технику',art:'♫',bg:'#e6c6ae',city:'Москва',likes:'38'},
- {title:'Складной велосипед',type:'Продажа · обмен',price:'24 000 ₽',art:'🚲',bg:'#c7dcb1',city:'Санкт-Петербург',likes:'71'},
- {title:'Сессия портретной съёмки',type:'Услуга',price:'от 3 500 ₽',art:'◉',bg:'#d9c7ec',city:'Москва',likes:'53'},
- {title:'Кресло для чтения',type:'Отдам даром',price:'Бесплатно',art:'⌑',bg:'#e8bc8c',city:'Казань',likes:'124'},
- {title:'Курс керамики',type:'Услуга · обмен',price:'2 часа',art:'◒',bg:'#a8d7d3',city:'Москва',likes:'19'},
- {title:'Настольная лампа',type:'Обмен',price:'на книги',art:'◉',bg:'#f3d95e',city:'Пермь',likes:'32'},
- {title:'Швейная машинка',type:'Продажа',price:'8 500 ₽',art:'⚙',bg:'#c2d0ea',city:'Екатеринбург',likes:'47'},
- {title:'Помощь с садом',type:'Услуга',price:'1 000 ₽ / час',art:'✿',bg:'#cbe3b0',city:'Новосибирск',likes:'15'}
+const listings = [
+  {id:1,title:'Винтажный проигрыватель',type:'Обмен',kind:'Вещи',price:'на технику',art:'♫',bg:'#e6c6ae',city:'Москва',likes:38,views:412,owner:'Антон',rating:'4.9',description:'Рабочий проигрыватель «Вега» с тёплым аналоговым звуком. Бережное хранение, игла заменена год назад. Обменяю на фототехнику, небольшую акустику или интересные пластинки.',tags:['музыка','винтаж','техника'],condition:'Хорошее',published:'Сегодня, 10:42'},
+  {id:2,title:'Складной велосипед',type:'Продажа · Обмен',kind:'Вещи',price:'24 000 ₽',art:'🚲',bg:'#c7dcb1',city:'Санкт-Петербург',likes:71,views:886,owner:'Мария',rating:'5.0',description:'Лёгкий городской велосипед, удобно хранить дома и брать в электричку. Полное ТО в мае, новые тормозные колодки.',tags:['велосипед','город','спорт'],condition:'Отличное',published:'Вчера, 18:20'},
+  {id:3,title:'Сессия портретной съёмки',type:'Услуга',kind:'Услуги',price:'от 3 500 ₽',art:'◉',bg:'#d9c7ec',city:'Москва',likes:53,views:367,owner:'Лена',rating:'4.8',description:'Часовая прогулочная фотосессия, помощь с образом и 30 фотографий в авторской обработке.',tags:['фото','портрет','творчество'],condition:'1 час',published:'2 дня назад'},
+  {id:4,title:'Кресло для чтения',type:'Отдам даром',kind:'Вещи',price:'Бесплатно',art:'⌑',bg:'#e8bc8c',city:'Казань',likes:124,views:1209,owner:'Илья',rating:'4.7',description:'Уютное кресло середины прошлого века. Обивка чистая, деревянные ножки требуют лёгкой реставрации. Только самовывоз.',tags:['мебель','винтаж','даром'],condition:'Есть следы жизни',published:'3 дня назад'},
+  {id:5,title:'Курс керамики',type:'Услуга · Обмен',kind:'Услуги',price:'2 часа',art:'◒',bg:'#a8d7d3',city:'Москва',likes:19,views:214,owner:'Ольга',rating:'5.0',description:'Познакомлю с ручной лепкой и глазуровкой. Все материалы и обжиг включены. Можно обменять на помощь с сайтом.',tags:['керамика','обучение','хобби'],condition:'2 занятия',published:'4 дня назад'},
+  {id:6,title:'Настольная лампа',type:'Обмен',kind:'Вещи',price:'на книги',art:'◉',bg:'#f3d95e',city:'Пермь',likes:32,views:291,owner:'Артём',rating:'4.6',description:'Яркая металлическая лампа в стиле 70-х. Исправна, провод новый. Ищу книги по архитектуре и дизайну.',tags:['свет','дом','дизайн'],condition:'Хорошее',published:'5 дней назад'},
+  {id:7,title:'Швейная машинка',type:'Продажа',kind:'Вещи',price:'8 500 ₽',art:'⚙',bg:'#c2d0ea',city:'Екатеринбург',likes:47,views:633,owner:'Нина',rating:'4.9',description:'Надёжная машинка для дома, шьёт плотные ткани. В комплекте педаль, чехол и набор лапок.',tags:['шитьё','техника','хобби'],condition:'Отличное',published:'Неделю назад'},
+  {id:8,title:'Помощь с садом',type:'Услуга',kind:'Услуги',price:'1 000 ₽ / час',art:'✿',bg:'#cbe3b0',city:'Новосибирск',likes:15,views:178,owner:'Павел',rating:'4.8',description:'Помогу подготовить сад к сезону: обрезка, посадка, уход. Есть свой инструмент и автомобиль.',tags:['сад','помощь','растения'],condition:'По договорённости',published:'Неделю назад'}
 ];
-const grid=document.querySelector('#listingGrid');
-function render(items){grid.innerHTML=items.map(x=>`<article class="listing"><div class="listing-image" style="background:${x.bg}">${x.art}<i>♡</i></div><span class="tag">${x.type}</span><h3>${x.title}</h3><div class="listing-meta"><span>${x.city} · ♡ ${x.likes}</span><b>${x.price}</b></div></article>`).join('')}
-render(listings);
-document.querySelectorAll('.filters button').forEach(b=>b.onclick=()=>{document.querySelector('.filters .active').classList.remove('active');b.classList.add('active');const kind=b.textContent;render(kind==='Все'?listings:listings.filter(x=>x.type.includes(kind==='Вещи'?'Обмен':kind==='Услуги'?'Услуга':kind==='Отдам даром'?'Отдам':kind)))});
-const search=document.querySelector('#search'),suggest=document.querySelector('#suggestions');
-search.oninput=()=>{let q=search.value.toLowerCase();let hits=listings.filter(x=>x.title.toLowerCase().includes(q)).slice(0,4);suggest.innerHTML=hits.map(x=>`<div>${x.title} <small>— ${x.city}</small></div>`).join('')||'<div>Попробуйте другой запрос</div>';suggest.classList.toggle('show',!!q)};
-suggest.onclick=e=>{search.value=e.target.textContent.split(' —')[0];suggest.classList.remove('show');document.querySelector('#catalog').scrollIntoView()};
-document.querySelector('#searchButton').onclick=()=>{render(listings.filter(x=>x.title.toLowerCase().includes(search.value.toLowerCase())));document.querySelector('#catalog').scrollIntoView()};
-const toast=document.querySelector('#toast');function notice(t){toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),3000)}
-document.querySelectorAll('[data-modal]').forEach(x=>x.onclick=()=>document.querySelector('#listingModal').showModal());document.querySelector('#openChain').onclick=()=>document.querySelector('#chainModal').showModal();
-document.querySelectorAll('dialog .close').forEach(x=>x.onclick=()=>x.closest('dialog').close());document.querySelectorAll('dialog form').forEach(x=>x.onsubmit=e=>{e.preventDefault();x.closest('dialog').close();notice('Готово! В полноценной версии продолжим оформление.');});
 
+function card(x) {
+  return `<a class="listing" href="product.html?id=${x.id}"><div class="listing-image" style="background:${x.bg}">${x.art}<span class="heart" aria-hidden="true">♡</span></div><span class="tag">${x.type}</span><h3>${x.title}</h3><div class="listing-meta"><span>${x.city} · ♡ ${x.likes}</span><b>${x.price}</b></div></a>`;
+}
+
+const grid = document.querySelector('#listingGrid');
+function render(items) {
+  if (!grid) return;
+  grid.innerHTML = items.length ? items.map(card).join('') : '<div class="empty-state"><b>Ничего не нашли</b><span>Попробуйте изменить запрос или фильтры</span></div>';
+}
+render(listings);
+
+document.querySelectorAll('.filters button').forEach(button => button.addEventListener('click', () => {
+  document.querySelector('.filters .active')?.classList.remove('active');
+  button.classList.add('active');
+  const kind = button.dataset.filter || button.textContent.trim();
+  if (kind === 'Все') return render(listings);
+  render(listings.filter(x => x.kind === kind || x.type.includes(kind)));
+}));
+
+const search = document.querySelector('#search');
+const suggest = document.querySelector('#suggestions');
+if (search && suggest) {
+  search.addEventListener('input', () => {
+    const q = search.value.toLowerCase();
+    const hits = listings.filter(x => `${x.title} ${x.tags.join(' ')}`.toLowerCase().includes(q)).slice(0,4);
+    suggest.innerHTML = hits.map(x => `<div data-id="${x.id}">${x.title} <small>— ${x.city}</small></div>`).join('') || '<div>Попробуйте другой запрос</div>';
+    suggest.classList.toggle('show', Boolean(q));
+  });
+  suggest.addEventListener('click', e => { const id = e.target.closest('[data-id]')?.dataset.id; if (id) location.href = `product.html?id=${id}`; });
+}
+
+document.querySelector('#searchButton')?.addEventListener('click', () => {
+  const q = search.value.trim();
+  location.href = `catalog.html${q ? `?q=${encodeURIComponent(q)}` : ''}`;
+});
+
+document.querySelectorAll('.popular button').forEach(button => button.addEventListener('click', () => { location.href = `catalog.html?q=${encodeURIComponent(button.textContent)}`; }));
+
+const toast = document.querySelector('#toast');
+function notice(text) { if (!toast) return; toast.textContent=text; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
+document.querySelectorAll('[data-modal="listing"]').forEach(x => x.addEventListener('click', () => document.querySelector('#listingModal')?.showModal()));
+document.querySelector('#openChain')?.addEventListener('click', () => document.querySelector('#chainModal')?.showModal());
+document.querySelectorAll('dialog .close').forEach(x => x.addEventListener('click', () => x.closest('dialog').close()));
+document.querySelectorAll('dialog form').forEach(x => x.addEventListener('submit', e => { e.preventDefault(); x.closest('dialog').close(); notice('Готово! Заявка сохранена.'); }));
+
+const catalogSearch = document.querySelector('#catalogSearch');
+const cityFilter = document.querySelector('#cityFilter');
+const sortFilter = document.querySelector('#sortFilter');
+function renderCatalog() {
+  let items = [...listings];
+  const q = catalogSearch?.value.toLowerCase().trim() || '';
+  const active = document.querySelector('.catalog-tabs .active')?.dataset.filter || 'Все';
+  if (q) items = items.filter(x => `${x.title} ${x.tags.join(' ')}`.toLowerCase().includes(q));
+  if (active !== 'Все') items = items.filter(x => x.kind === active || x.type.includes(active));
+  if (cityFilter?.value) items = items.filter(x => x.city === cityFilter.value);
+  if (sortFilter?.value === 'likes') items.sort((a,b) => b.likes-a.likes);
+  if (sortFilter?.value === 'price') items.sort((a,b) => parseFloat(a.price.replace(/\s/g,'')) - parseFloat(b.price.replace(/\s/g,'')));
+  render(items);
+  const count = document.querySelector('#catalogCount');
+  if (count) count.textContent = items.length === 1 ? '1 предложение' : `${items.length} предложений`;
+}
+if (catalogSearch) {
+  catalogSearch.value = new URLSearchParams(location.search).get('q') || '';
+  catalogSearch.addEventListener('input', renderCatalog); cityFilter?.addEventListener('change', renderCatalog); sortFilter?.addEventListener('change', renderCatalog);
+  document.querySelectorAll('.catalog-tabs button').forEach(button => button.addEventListener('click', renderCatalog));
+  renderCatalog();
+}
+
+const productRoot = document.querySelector('#productRoot');
+if (productRoot) {
+  const item = listings.find(x => x.id === Number(new URLSearchParams(location.search).get('id'))) || listings[0];
+  document.title = `${item.title} — XOX`;
+  productRoot.innerHTML = `<nav class="breadcrumbs"><a href="index.html">Главная</a><span>→</span><a href="catalog.html">Каталог</a><span>→</span><span>${item.title}</span></nav><div class="product-layout"><section class="product-gallery"><div class="product-main-art" style="background:${item.bg}"><span>${item.art}</span><button class="product-heart">♡ ${item.likes}</button><div class="photo-count">▧ 1 фото</div></div><div class="product-mini-note">Проверенное объявление <b>✓</b></div></section><section class="product-info"><span class="tag">${item.type}</span><h1>${item.title}</h1><div class="product-location">⌖ ${item.city} · ${item.published} · ${item.views} просмотров</div><div class="product-price">${item.price}</div><div class="product-actions"><button class="primary-action" data-offer>Предложить обмен <span>↔</span></button><button class="secondary-action" data-contact>Написать продавцу</button></div><div class="safe-note">🛡 Договаривайтесь и подтверждайте обмен внутри XOX</div></section></div><div class="product-below"><article class="description-card"><h2>О предложении</h2><p>${item.description}</p><dl><div><dt>Состояние</dt><dd>${item.condition}</dd></div><div><dt>Категория</dt><dd>${item.kind}</dd></div><div><dt>Метки</dt><dd>${item.tags.map(t=>`<a href="catalog.html?q=${t}">#${t}</a>`).join(' ')}</dd></div></dl></article><aside class="seller-card"><div class="seller-avatar">${item.owner[0]}</div><div><small>Владелец</small><h3>${item.owner}</h3><span>★ ${item.rating} · отвечает быстро</span></div><a href="#">Все предложения →</a></aside></div><section class="similar"><div class="section-head"><h2>Похожие предложения</h2><a href="catalog.html">Весь каталог →</a></div><div class="listing-grid">${listings.filter(x=>x.id!==item.id).slice(0,4).map(card).join('')}</div></section>`;
+  productRoot.querySelector('[data-offer]').addEventListener('click', () => document.querySelector('#offerModal').showModal());
+  productRoot.querySelector('[data-contact]').addEventListener('click', () => notice('Чат с продавцом откроется после входа.'));
+}

@@ -11,8 +11,8 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="logo" href="#top" aria-label="XOX">XO<span>×</span></a>
-    <nav><a href="#catalog">Каталог</a><a href="#how">Как это работает</a><a href="#community">Сообщество</a></nav>
+    <a class="logo" href="index.html" aria-label="XOX"><img src="assets/logo_xox.png" alt="XOX"></a>
+    <nav><a href="catalog.html">Каталог</a><a href="#how">Как это работает</a><a href="#community">Сообщество</a></nav>
     <div class="header-actions"><button class="location">⌖ Москва</button><button class="login">Войти</button><button class="add-button" data-modal="listing">＋ Разместить</button></div>
   </header>
 
@@ -42,7 +42,7 @@
     </section>
 
     <section id="catalog" class="catalog section">
-      <div class="section-head"><div><div class="eyebrow"><i></i> сейчас в обмене</div><h2>Хорошие вещи ждут<br>новых историй</h2></div><a href="#" class="all-link">Смотреть всё <span>→</span></a></div>
+      <div class="section-head"><div><div class="eyebrow"><i></i> сейчас в обмене</div><h2>Хорошие вещи ждут<br>новых историй</h2></div><a href="catalog.html" class="all-link">Смотреть всё <span>→</span></a></div>
       <div class="filters"><button class="active">Все</button><button>Вещи</button><button>Услуги</button><button>Обмен</button><button>Продажа</button><button>Отдам даром</button></div>
       <div id="listingGrid" class="listing-grid"></div>
     </section>
@@ -56,11 +56,10 @@
 
     <section id="community" class="community"><div><div class="eyebrow"><i></i> люди xox</div><h2>Вместе вещей<br>становится <em>больше.</em></h2></div><div class="community-stats"><div><b>41 280</b><span>участников</span></div><div><b>68 594</b><span>вещи и услуги</span></div><div><b>12 043</b><span>счастливых обмена</span></div></div></section>
   </main>
-  <footer><a class="logo" href="#top">XO<span>×</span></a><span>© 2024 XOX. Вещи для людей.</span><div><a href="#">Правила</a><a href="#">Помощь</a><a href="#">ВКонтакте</a></div></footer>
+  <footer><a class="logo" href="index.html"><img src="assets/logo_xox.png" alt="XOX"></a><span>© 2026 XOX. Вещи для людей.</span><div><a href="#">Правила</a><a href="#">Помощь</a><a href="#">ВКонтакте</a></div></footer>
 
   <dialog id="listingModal"><button class="close" aria-label="Закрыть">×</button><div class="modal-icon">＋</div><h3>Разместить объявление</h3><p>В демо-версии форма покажет, как будет выглядеть процесс публикации.</p><form id="listingForm"><label>Название<input required placeholder="Например, горный велосипед"></label><label>Тип<select><option>Вещь</option><option>Услуга</option></select></label><label>Операция<select><option>Обмен</option><option>Продажа</option><option>Отдам даром</option></select></label><button>Продолжить</button></form></dialog>
   <dialog id="chainModal"><button class="close" aria-label="Закрыть">×</button><div class="modal-icon">↔</div><h3>Ваш маршрут обмена</h3><p>Расскажите, что отдаёте и что хотите получить — XOX подберёт подходящие цепочки до 4 шагов.</p><form><label>У меня есть<input placeholder="Велосипед"></label><label>Я ищу<input placeholder="Мотоцикл"></label><button>Найти варианты</button></form></dialog>
   <div id="toast" role="status"></div><script src="app.js"></script>
 </body>
 </html>
-
