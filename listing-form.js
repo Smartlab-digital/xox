@@ -8,7 +8,7 @@ const errorBox = document.querySelector('#formErrors');
 let currentStep = 1;
 let registrationRequired = false;
 let listingPhotos = [];
-const listingFields = ['kind','title','country','city','category','condition','price','currency','unit','description','keywords','wanted','status','sellerType','sellerName','phone','email','website'];
+const listingFields = ['kind','title','country','city','category','condition','price','currency','unit','description','keywords','wanted','status','sellerType','sellerName','phone','email','address','website'];
 
 const savedDraft = JSON.parse(localStorage.getItem('xox_listing_draft') || '{}');
 Object.entries(savedDraft).forEach(([name,value]) => {
@@ -20,7 +20,7 @@ Object.entries(savedDraft).forEach(([name,value]) => {
 function isAuthorized() { return Boolean(localStorage.getItem('xox_user')); }
 function updateAuthStatus() { const user=JSON.parse(localStorage.getItem('xox_user') || 'null'); document.querySelector('#authStatus').textContent=user ? `● ${user.name}` : 'Войти'; }
 updateAuthStatus();
-function prefillProfileData() { const user=window.XOXAuth?.currentUser();if(!user)return;const values={country:user.country,city:user.city,sellerName:user.name,phone:user.phone,email:user.email};Object.entries(values).forEach(([name,value])=>{const field=form.elements[name];if(field&&value&&!field.value)field.value=value;}); }
+function prefillProfileData() { const user=window.XOXAuth?.currentUser();if(!user)return;const values={country:user.country,city:user.city,sellerName:user.name,phone:user.phone,email:user.email,address:user.address};Object.entries(values).forEach(([name,value])=>{const field=form.elements[name];if(field&&value&&!field.value)field.value=value;}); }
 prefillProfileData();
 
 function stepFields(step) { return [...steps[step-1].querySelectorAll('input,select,textarea')].filter(x => !x.closest('.hidden')); }
@@ -64,8 +64,8 @@ nextButton.addEventListener('click',async()=>{
   if(!validateStep()) return; saveDraft();
   if(currentStep<3) return showStep(currentStep+1);
   if(currentStep===3){buildPreview();return showStep(4);}
-  if(currentStep===4){if(isAuthorized()) return publishListing(); registrationRequired=true; const data=new FormData(form); form.elements.regCountry.value=data.get('country');form.elements.regCity.value=data.get('city');form.elements.fullName.value=data.get('sellerName');form.elements.regPhone.value=data.get('phone');form.elements.regEmail.value=data.get('email');form.elements.regWebsite.value=data.get('website');return showStep(5);}
-  if(currentStep===5){const data=new FormData(form);try{if(window.XOXAuth){await window.XOXAuth.registerAccount({name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity'),password:data.get('password')});}else{localStorage.setItem('xox_user',JSON.stringify({id:Date.now(),name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity')}));}updateAuthStatus();publishListing();}catch(error){errorBox.textContent=error.message;}}
+  if(currentStep===4){if(isAuthorized()) return publishListing(); registrationRequired=true; const data=new FormData(form); form.elements.regCountry.value=data.get('country');form.elements.regCity.value=data.get('city');form.elements.fullName.value=data.get('sellerName');form.elements.regPhone.value=data.get('phone');form.elements.regEmail.value=data.get('email');form.elements.regAddress.value=data.get('address');form.elements.regWebsite.value=data.get('website');return showStep(5);}
+  if(currentStep===5){const data=new FormData(form);try{if(window.XOXAuth){await window.XOXAuth.registerAccount({name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity'),address:data.get('regAddress'),password:data.get('password')});}else{localStorage.setItem('xox_user',JSON.stringify({id:Date.now(),name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity'),address:data.get('regAddress')}));}updateAuthStatus();publishListing();}catch(error){errorBox.textContent=error.message;}}
 });
 backButton.addEventListener('click',()=>showStep(Math.max(1,currentStep-1)));
 form.addEventListener('input',saveDraft);

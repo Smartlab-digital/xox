@@ -38,7 +38,7 @@
     </section>
 
     <section class="quick-cats" aria-label="Категории">
-      <button><span class="cat-icon orange">⌘</span>Вещи <b>28 451</b></button><button><span class="cat-icon green">✦</span>Услуги <b>9 208</b></button><button><span class="cat-icon purple">↔</span>Обмены <b>3 684</b></button><button><span class="cat-icon blue">◌</span>Рядом с вами <b>1 029</b></button>
+      <a href="catalog.html?filter=%D0%92%D0%B5%D1%89%D0%B8"><span class="cat-icon orange">⌘</span>Вещи <b id="thingsCount">0</b></a><a href="catalog.html?filter=%D0%A3%D1%81%D0%BB%D1%83%D0%B3%D0%B8"><span class="cat-icon green">✦</span>Услуги <b id="servicesCount">0</b></a><a href="catalog.html?filter=%D0%9E%D0%B1%D0%BC%D0%B5%D0%BD"><span class="cat-icon purple">↔</span>Обмены <b id="exchangesCount">0</b></a><button id="openNearbyMap" type="button"><span class="cat-icon blue">◌</span>Рядом с вами <b id="nearbyCount">0</b></button>
     </section>
 
     <section id="catalog" class="catalog section">
@@ -80,6 +80,7 @@
 
   <dialog id="listingModal"><button class="close" aria-label="Закрыть">×</button><div class="modal-icon">＋</div><h3>Разместить объявление</h3><p>В демо-версии форма покажет, как будет выглядеть процесс публикации.</p><form id="listingForm"><label>Название<input required placeholder="Например, горный велосипед"></label><label>Тип<select><option>Вещь</option><option>Услуга</option></select></label><label>Операция<select><option>Обмен</option><option>Продажа</option><option>Отдам даром</option></select></label><button>Продолжить</button></form></dialog>
   <dialog id="chainModal"><button class="close" aria-label="Закрыть">×</button><div class="modal-icon">↔</div><h3>Ваш маршрут обмена</h3><p>Расскажите, что отдаёте и что хотите получить — XOX подберёт подходящие цепочки до 4 шагов.</p><form><label>У меня есть<input placeholder="Велосипед"></label><label>Я ищу<input placeholder="Мотоцикл"></label><button>Найти варианты</button></form></dialog>
+  <dialog id="nearbyMapModal" class="nearby-map-modal"><button class="close" aria-label="Закрыть">×</button><div class="modal-icon">⌖</div><h3>Предложения рядом</h3><p>Выберите объявление, чтобы увидеть расположение владельца на карте.</p><div class="nearby-map-layout"><div class="map-frame"><iframe id="nearbyMapFrame" title="Карта предложений рядом" loading="lazy"></iframe><a id="nearbyMapOpen" href="https://www.openstreetmap.org" target="_blank" rel="noopener">Открыть большую карту ↗</a></div><div id="nearbyMapList" class="nearby-map-list"></div></div></dialog>
   <div id="toast" role="status"></div><script src="auth.js"></script><script src="app.js"></script>
 </body>
 </html>
