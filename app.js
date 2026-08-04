@@ -26,9 +26,17 @@ const normalizeStoredListing = item => {
 const listingFreshness=item=>Date.parse(item.createdAt)||Number(item.id)||0;
 const userListings=readStoredListings().map(normalizeStoredListing).sort((a,b)=>listingFreshness(b)-listingFreshness(a));
 const allListings=[...userListings,...listings];
+window.XOXCatalog=allListings;
+const readFavoriteStore=()=>{try{const value=JSON.parse(localStorage.getItem('xox_favorites')||'{}');return value&&typeof value==='object'?value:{};}catch{return{};}};
+const favoriteUserKey=()=>{const user=window.XOXAuth?.currentUser();return user?String(user.id||user.email):'';};
+const favoriteEntries=()=>{const key=favoriteUserKey(),entries=key?readFavoriteStore()[key]:[];return Array.isArray(entries)?entries:[];};
+const favoriteIds=()=>new Set(favoriteEntries().map(item=>String(item.id)));
+const isFavorite=id=>favoriteIds().has(String(id));
+const favoriteSnapshot=item=>({id:String(item.id),title:item.title,kind:item.kind,type:item.type,price:item.price,city:item.city,image:typeof item.image==='string'&&item.image.startsWith('assets/')?item.image:''});
+const filterListings=(items,kind)=>kind==='Все'?items:kind==='Избранное'?items.filter(item=>isFavorite(item.id)):items.filter(item=>item.kind===kind||item.type.includes(kind));
 
 function card(x) {
-  return `<a class="listing" href="product.html?id=${encodeURIComponent(x.id)}"><div class="listing-image"><img src="${x.image}" alt="${safeText(x.title)}" loading="lazy"><span class="heart" aria-hidden="true">♡</span></div><span class="tag">${safeText(x.type)}</span><h3>${safeText(x.title)}</h3><div class="listing-meta"><span>${safeText(x.city)} · ♡ ${x.likes}</span><b>${safeText(x.price)}</b></div></a>`;
+  const favorite=isFavorite(x.id);return `<a class="listing" href="product.html?id=${encodeURIComponent(x.id)}"><div class="listing-image"><img src="${x.image}" alt="${safeText(x.title)}" loading="lazy"><button class="heart${favorite?' active':''}" type="button" data-favorite-id="${safeText(x.id)}" aria-label="${favorite?'Убрать из избранного':'Добавить в избранное'}" aria-pressed="${favorite}">${favorite?'♥':'♡'}</button></div><span class="tag">${safeText(x.type)}</span><h3>${safeText(x.title)}</h3><div class="listing-meta"><span>${safeText(x.city)} · ♡ ${x.likes}</span><b>${safeText(x.price)}</b></div></a>`;
 }
 
 const grid = document.querySelector('#listingGrid');
@@ -44,7 +52,7 @@ document.querySelectorAll('.filters button').forEach(button => button.addEventLi
   document.querySelector('.filters .active')?.classList.remove('active');
   button.classList.add('active');
   const kind = button.dataset.filter || button.textContent.trim();
-  const filtered=kind==='Все'?displayedListings:displayedListings.filter(x => x.kind === kind || x.type.includes(kind));
+  const filtered=filterListings(displayedListings,kind);
   render(isCatalogPage?filtered:filtered.slice(0,4));
 }));
 
@@ -69,6 +77,8 @@ document.querySelectorAll('.popular button').forEach(button => button.addEventLi
 
 const countTargets={thingsCount:allListings.filter(item=>item.kind==='Вещи').length,servicesCount:allListings.filter(item=>item.kind==='Услуги').length,exchangesCount:allListings.filter(item=>item.type.includes('Обмен')).length,nearbyCount:allListings.filter(item=>item.city&&item.city!=='Город не указан').length};
 Object.entries(countTargets).forEach(([id,count])=>{const target=document.querySelector(`#${id}`);if(target)target.textContent=count.toLocaleString('ru-RU');});
+const updateFavoriteCount=()=>{const target=document.querySelector('#favoritesCount');if(target)target.textContent=favoriteEntries().length.toLocaleString('ru-RU');};
+updateFavoriteCount();
 const nearbyModal=document.querySelector('#nearbyMapModal');
 if(nearbyModal){
   const frame=nearbyModal.querySelector('#nearbyMapFrame'),openLink=nearbyModal.querySelector('#nearbyMapOpen'),list=nearbyModal.querySelector('#nearbyMapList'),nearbyListings=allListings.filter(item=>item.city&&item.city!=='Город не указан');
@@ -80,6 +90,7 @@ if(nearbyModal){
 
 const toast = document.querySelector('#toast');
 function notice(text) { if (!toast) return; toast.textContent=text; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
+document.addEventListener('click',event=>{const button=event.target.closest('[data-favorite-id]');if(!button)return;event.preventDefault();event.stopPropagation();const user=window.XOXAuth?.currentUser();if(!user){window.XOXAuth?.open();return;}const item=allListings.find(listing=>String(listing.id)===button.dataset.favoriteId);if(!item)return;const store=readFavoriteStore(),key=favoriteUserKey(),entries=Array.isArray(store[key])?store[key]:[],exists=entries.some(entry=>String(entry.id)===String(item.id));store[key]=exists?entries.filter(entry=>String(entry.id)!==String(item.id)):[favoriteSnapshot(item),...entries];localStorage.setItem('xox_favorites',JSON.stringify(store));document.querySelectorAll(`[data-favorite-id="${CSS.escape(String(item.id))}"]`).forEach(heart=>{heart.classList.toggle('active',!exists);heart.textContent=exists?'♡':'♥';heart.setAttribute('aria-pressed',String(!exists));heart.setAttribute('aria-label',exists?'Добавить в избранное':'Убрать из избранного');});updateFavoriteCount();const active=document.querySelector('.filters .active')?.dataset.filter||document.querySelector('.filters .active')?.textContent.trim();if(active==='Избранное'){if(isCatalogPage)renderCatalog();else render(filterListings(displayedListings,'Избранное').slice(0,4));}window.dispatchEvent(new CustomEvent('xox:favorites-change'));notice(exists?'Удалено из избранного':'Добавлено в избранное');});
 document.querySelectorAll('[data-modal="listing"]').forEach(x => x.addEventListener('click', () => { location.href = 'add-listing.html'; }));
 document.querySelector('#openChain')?.addEventListener('click', () => document.querySelector('#chainModal')?.showModal());
 document.querySelectorAll('dialog .close').forEach(x => x.addEventListener('click', () => x.closest('dialog').close()));
@@ -125,7 +136,7 @@ function renderCatalog() {
   const q = catalogSearch?.value.toLowerCase().trim() || '';
   const active = document.querySelector('.catalog-tabs .active')?.dataset.filter || 'Все';
   if (q) items = items.filter(x => `${x.title} ${x.tags.join(' ')}`.toLowerCase().includes(q));
-  if (active !== 'Все') items = items.filter(x => x.kind === active || x.type.includes(active));
+  if (active !== 'Все') items = filterListings(items,active);
   if (cityFilter?.value) items = items.filter(x => x.city === cityFilter.value);
   if (sortFilter?.value === 'likes') items.sort((a,b) => b.likes-a.likes);
   if (sortFilter?.value === 'price') items.sort((a,b) => parseFloat(a.price.replace(/\s/g,'')) - parseFloat(b.price.replace(/\s/g,'')));
@@ -141,6 +152,8 @@ if (catalogSearch) {
   document.querySelectorAll('.catalog-tabs button').forEach(button => button.addEventListener('click', renderCatalog));
   renderCatalog();
 }
+window.addEventListener('xox:auth-change',()=>{updateFavoriteCount();const active=document.querySelector('.filters .active')?.dataset.filter||document.querySelector('.filters .active')?.textContent.trim();if(active==='Избранное'){if(isCatalogPage)renderCatalog();else render(filterListings(displayedListings,'Избранное').slice(0,4));}});
+window.addEventListener('xox:favorites-change',()=>{document.querySelectorAll('[data-favorite-id]').forEach(heart=>{const favorite=isFavorite(heart.dataset.favoriteId);heart.classList.toggle('active',favorite);heart.textContent=favorite?'♥':'♡';heart.setAttribute('aria-pressed',String(favorite));heart.setAttribute('aria-label',favorite?'Убрать из избранного':'Добавить в избранное');});updateFavoriteCount();const active=document.querySelector('.filters .active')?.dataset.filter||document.querySelector('.filters .active')?.textContent.trim();if(active==='Избранное'){if(isCatalogPage)renderCatalog();else render(filterListings(displayedListings,'Избранное').slice(0,4));}});
 
 const productRoot = document.querySelector('#productRoot');
 if (productRoot) {
