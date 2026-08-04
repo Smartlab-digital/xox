@@ -7,6 +7,7 @@ const stepLabel = document.querySelector('#stepLabel');
 const errorBox = document.querySelector('#formErrors');
 let currentStep = 1;
 let registrationRequired = false;
+let listingPhotoData = '';
 const listingFields = ['kind','title','country','city','category','condition','price','currency','unit','description','keywords','wanted','status','sellerType','sellerName','phone','email','website'];
 
 const savedDraft = JSON.parse(localStorage.getItem('xox_listing_draft') || '{}');
@@ -52,18 +53,19 @@ function buildPreview() {
 }
 
 function publishListing() {
-  const data=serializeListing(); data.id=Date.now(); data.createdAt=new Date().toISOString(); data.views=0; data.likes=0; data.owner=JSON.parse(localStorage.getItem('xox_user')); const existing=JSON.parse(localStorage.getItem('xox_listings')||'[]'); existing.push(data); localStorage.setItem('xox_listings',JSON.stringify(existing)); localStorage.removeItem('xox_listing_draft'); form.hidden=true; document.querySelector('#publishSuccess').classList.add('show');
+  const data=serializeListing(); if(listingPhotoData)data.image=listingPhotoData; data.id=Date.now(); data.createdAt=new Date().toISOString(); data.views=0; data.likes=0; data.owner=JSON.parse(localStorage.getItem('xox_user')); const existing=JSON.parse(localStorage.getItem('xox_listings')||'[]'); existing.push(data); localStorage.setItem('xox_listings',JSON.stringify(existing)); localStorage.removeItem('xox_listing_draft'); form.hidden=true; document.querySelector('#publishSuccess').classList.add('show');
 }
 
-nextButton.addEventListener('click',()=>{
+nextButton.addEventListener('click',async()=>{
   if(!validateStep()) return; saveDraft();
   if(currentStep<3) return showStep(currentStep+1);
   if(currentStep===3){buildPreview();return showStep(4);}
   if(currentStep===4){if(isAuthorized()) return publishListing(); registrationRequired=true; const data=new FormData(form); form.elements.regCountry.value=data.get('country');form.elements.regCity.value=data.get('city');form.elements.fullName.value=data.get('sellerName');form.elements.regPhone.value=data.get('phone');form.elements.regEmail.value=data.get('email');form.elements.regWebsite.value=data.get('website');return showStep(5);}
-  if(currentStep===5){const data=new FormData(form);localStorage.setItem('xox_user',JSON.stringify({id:Date.now(),name:data.get('fullName'),email:data.get('regEmail'),city:data.get('regCity')}));updateAuthStatus();publishListing();}
+  if(currentStep===5){const data=new FormData(form);try{if(window.XOXAuth){await window.XOXAuth.registerAccount({name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),city:data.get('regCity'),password:data.get('password')});}else{localStorage.setItem('xox_user',JSON.stringify({id:Date.now(),name:data.get('fullName'),email:data.get('regEmail'),city:data.get('regCity')}));}updateAuthStatus();publishListing();}catch(error){errorBox.textContent=error.message;}}
 });
 backButton.addEventListener('click',()=>showStep(Math.max(1,currentStep-1)));
 form.addEventListener('input',saveDraft);
 form.querySelectorAll('input[name="kind"]').forEach(x=>x.addEventListener('change',()=>document.querySelector('.service-unit').classList.toggle('hidden',x.value!=='service'||!x.checked)));
-document.querySelector('#photoInput').addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>document.querySelector('#photoPreview').innerHTML=`<img src="${reader.result}" alt="Предпросмотр"><b>${file.name}</b>`;reader.readAsDataURL(file);});
+function optimizePhoto(file) { return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=reject;reader.onload=()=>{const image=new Image();image.onerror=reject;image.onload=()=>{const max=900,scale=Math.min(1,max/Math.max(image.width,image.height)),canvas=document.createElement('canvas');canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.72));};image.src=reader.result;};reader.readAsDataURL(file);}); }
+document.querySelector('#photoInput').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;if(file.size>10*1024*1024){errorBox.textContent='Фотография должна быть меньше 10 МБ.';e.target.value='';return;}try{listingPhotoData=await optimizePhoto(file);document.querySelector('#photoPreview').innerHTML=`<img src="${listingPhotoData}" alt="Предпросмотр"><b>${escapeHTML(file.name)}</b>`;errorBox.textContent='';}catch{errorBox.textContent='Не удалось обработать фотографию. Выберите другой файл.';}});
 showStep(1);

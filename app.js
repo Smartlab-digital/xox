@@ -9,8 +9,19 @@ const listings = [
   {id:8,title:'Помощь с садом',type:'Услуга',kind:'Услуги',price:'1 000 ₽ / час',image:'assets/listings/garden.jpg',credit:'Jael Rodriguez',photoUrl:'https://unsplash.com/photos/hp6vX7SvrCs',city:'Новосибирск',likes:15,views:178,owner:'Павел',rating:'4.8',description:'Помогу подготовить сад к сезону: обрезка, посадка, уход. Есть свой инструмент и автомобиль.',tags:['сад','помощь','растения'],condition:'По договорённости',published:'Неделю назад'}
 ];
 
+const safeText = value => String(value ?? '').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+const readStoredListings = () => { try { const stored=JSON.parse(localStorage.getItem('xox_listings') || '[]');return Array.isArray(stored)?stored:[]; } catch { return []; } };
+const normalizeStoredListing = item => {
+  const operations=Array.isArray(item.operations)?item.operations:[];
+  const fallback=/фото|камер/i.test(`${item.title||''} ${item.category||''}`)||item.category==='Электроника'?'assets/listings/photography.jpg':item.kind==='service'?'assets/listings/garden.jpg':'assets/listings/record-player.jpg';
+  const image=typeof item.image==='string'&&(/^(data:image\/(jpeg|png|webp);base64,|assets\/)/.test(item.image))?item.image:fallback;
+  return {id:String(item.id),title:item.title||'Новое предложение',type:operations.join(' · ')||(item.kind==='service'?'Услуга':'Обмен'),kind:item.kind==='service'?'Услуги':'Вещи',price:item.price?`${Number(item.price).toLocaleString('ru-RU')} ${item.currency||'RUB'}`:(operations.includes('Даром')?'Бесплатно':'Обмен'),image,credit:'Пользователь XOX',photoUrl:'#',city:item.city||'Город не указан',likes:Number(item.likes)||0,views:Number(item.views)||0,owner:item.owner?.name||item.sellerName||'Участник XOX',rating:'Новый',description:item.description||'Описание появится позже.',tags:String(item.keywords||'').split(',').map(tag=>tag.trim()).filter(Boolean),condition:item.condition||'Не указано',published:'Только что'};
+};
+const userListings=readStoredListings().map(normalizeStoredListing).reverse();
+const allListings=[...userListings,...listings];
+
 function card(x) {
-  return `<a class="listing" href="product.html?id=${x.id}"><div class="listing-image"><img src="${x.image}" alt="${x.title}" loading="lazy"><span class="heart" aria-hidden="true">♡</span></div><span class="tag">${x.type}</span><h3>${x.title}</h3><div class="listing-meta"><span>${x.city} · ♡ ${x.likes}</span><b>${x.price}</b></div></a>`;
+  return `<a class="listing" href="product.html?id=${encodeURIComponent(x.id)}"><div class="listing-image"><img src="${x.image}" alt="${safeText(x.title)}" loading="lazy"><span class="heart" aria-hidden="true">♡</span></div><span class="tag">${safeText(x.type)}</span><h3>${safeText(x.title)}</h3><div class="listing-meta"><span>${safeText(x.city)} · ♡ ${x.likes}</span><b>${safeText(x.price)}</b></div></a>`;
 }
 
 const grid = document.querySelector('#listingGrid');
@@ -18,14 +29,15 @@ function render(items) {
   if (!grid) return;
   grid.innerHTML = items.length ? items.map(card).join('') : '<div class="empty-state"><b>Ничего не нашли</b><span>Попробуйте изменить запрос или фильтры</span></div>';
 }
-render(listings);
+const displayedListings=document.querySelector('.catalog-page')?allListings:listings;
+render(displayedListings);
 
 document.querySelectorAll('.filters button').forEach(button => button.addEventListener('click', () => {
   document.querySelector('.filters .active')?.classList.remove('active');
   button.classList.add('active');
   const kind = button.dataset.filter || button.textContent.trim();
-  if (kind === 'Все') return render(listings);
-  render(listings.filter(x => x.kind === kind || x.type.includes(kind)));
+  if (kind === 'Все') return render(displayedListings);
+  render(displayedListings.filter(x => x.kind === kind || x.type.includes(kind)));
 }));
 
 const search = document.querySelector('#search');
@@ -33,11 +45,11 @@ const suggest = document.querySelector('#suggestions');
 if (search && suggest) {
   search.addEventListener('input', () => {
     const q = search.value.toLowerCase();
-    const hits = listings.filter(x => `${x.title} ${x.tags.join(' ')}`.toLowerCase().includes(q)).slice(0,4);
-    suggest.innerHTML = hits.map(x => `<div data-id="${x.id}">${x.title} <small>— ${x.city}</small></div>`).join('') || '<div>Попробуйте другой запрос</div>';
+    const hits = allListings.filter(x => `${x.title} ${x.tags.join(' ')}`.toLowerCase().includes(q)).slice(0,4);
+    suggest.innerHTML = hits.map(x => `<div data-id="${safeText(x.id)}">${safeText(x.title)} <small>— ${safeText(x.city)}</small></div>`).join('') || '<div>Попробуйте другой запрос</div>';
     suggest.classList.toggle('show', Boolean(q));
   });
-  suggest.addEventListener('click', e => { const id = e.target.closest('[data-id]')?.dataset.id; if (id) location.href = `product.html?id=${id}`; });
+  suggest.addEventListener('click', e => { const id = e.target.closest('[data-id]')?.dataset.id; if (id) location.href = `product.html?id=${encodeURIComponent(id)}`; });
 }
 
 document.querySelector('#searchButton')?.addEventListener('click', () => {
@@ -52,7 +64,7 @@ function notice(text) { if (!toast) return; toast.textContent=text; toast.classL
 document.querySelectorAll('[data-modal="listing"]').forEach(x => x.addEventListener('click', () => { location.href = 'add-listing.html'; }));
 document.querySelector('#openChain')?.addEventListener('click', () => document.querySelector('#chainModal')?.showModal());
 document.querySelectorAll('dialog .close').forEach(x => x.addEventListener('click', () => x.closest('dialog').close()));
-document.querySelectorAll('dialog form').forEach(x => x.addEventListener('submit', e => { e.preventDefault(); x.closest('dialog').close(); notice('Готово! Заявка сохранена.'); }));
+document.querySelectorAll('dialog:not(#authModal) form').forEach(x => x.addEventListener('submit', e => { e.preventDefault(); x.closest('dialog').close(); notice('Готово! Заявка сохранена.'); }));
 
 const valueSection = document.querySelector('.value-converter');
 if (valueSection) {
@@ -90,7 +102,7 @@ const catalogSearch = document.querySelector('#catalogSearch');
 const cityFilter = document.querySelector('#cityFilter');
 const sortFilter = document.querySelector('#sortFilter');
 function renderCatalog() {
-  let items = [...listings];
+  let items = [...allListings];
   const q = catalogSearch?.value.toLowerCase().trim() || '';
   const active = document.querySelector('.catalog-tabs .active')?.dataset.filter || 'Все';
   if (q) items = items.filter(x => `${x.title} ${x.tags.join(' ')}`.toLowerCase().includes(q));
@@ -111,9 +123,10 @@ if (catalogSearch) {
 
 const productRoot = document.querySelector('#productRoot');
 if (productRoot) {
-  const item = listings.find(x => x.id === Number(new URLSearchParams(location.search).get('id'))) || listings[0];
+  const requestedId=new URLSearchParams(location.search).get('id');
+  const item = allListings.find(x => String(x.id) === requestedId) || allListings[0];
   document.title = `${item.title} — XOX`;
-  productRoot.innerHTML = `<nav class="breadcrumbs"><a href="index.html">Главная</a><span>→</span><a href="catalog.html">Каталог</a><span>→</span><span>${item.title}</span></nav><div class="product-layout"><section class="product-gallery"><div class="product-main-art"><img src="${item.image}" alt="${item.title}"><button class="product-heart">♡ ${item.likes}</button><div class="photo-count">▧ 1 фото</div></div><div class="product-mini-note"><span>Проверенное объявление <b>✓</b></span><a href="${item.photoUrl}" target="_blank" rel="noopener">Фото: ${item.credit} / Unsplash</a></div></section><section class="product-info"><span class="tag">${item.type}</span><h1>${item.title}</h1><div class="product-location">⌖ ${item.city} · ${item.published} · ${item.views} просмотров</div><div class="product-price">${item.price}</div><div class="product-actions"><button class="primary-action" data-offer>Предложить обмен <span>↔</span></button><button class="secondary-action" data-contact>Написать продавцу</button></div><div class="safe-note">🛡 Договаривайтесь и подтверждайте обмен внутри XOX</div></section></div><div class="product-below"><article class="description-card"><h2>О предложении</h2><p>${item.description}</p><dl><div><dt>Состояние</dt><dd>${item.condition}</dd></div><div><dt>Категория</dt><dd>${item.kind}</dd></div><div><dt>Метки</dt><dd>${item.tags.map(t=>`<a href="catalog.html?q=${t}">#${t}</a>`).join(' ')}</dd></div></dl></article><aside class="seller-card"><div class="seller-avatar">${item.owner[0]}</div><div><small>Владелец</small><h3>${item.owner}</h3><span>★ ${item.rating} · отвечает быстро</span></div><a href="#">Все предложения →</a></aside></div><section class="similar"><div class="section-head"><h2>Похожие предложения</h2><a href="catalog.html">Весь каталог →</a></div><div class="listing-grid">${listings.filter(x=>x.id!==item.id).slice(0,4).map(card).join('')}</div></section>`;
+  productRoot.innerHTML = `<nav class="breadcrumbs"><a href="index.html">Главная</a><span>→</span><a href="catalog.html">Каталог</a><span>→</span><span>${safeText(item.title)}</span></nav><div class="product-layout"><section class="product-gallery"><div class="product-main-art"><img src="${item.image}" alt="${safeText(item.title)}"><button class="product-heart">♡ ${item.likes}</button><div class="photo-count">▧ 1 фото</div></div><div class="product-mini-note"><span>Проверенное объявление <b>✓</b></span><span>${safeText(item.credit)}</span></div></section><section class="product-info"><span class="tag">${safeText(item.type)}</span><h1>${safeText(item.title)}</h1><div class="product-location">⌖ ${safeText(item.city)} · ${safeText(item.published)} · ${item.views} просмотров</div><div class="product-price">${safeText(item.price)}</div><div class="product-actions"><button class="primary-action" data-offer>Предложить обмен <span>↔</span></button><button class="secondary-action" data-contact>Написать продавцу</button></div><div class="safe-note">🛡 Договаривайтесь и подтверждайте обмен внутри XOX</div></section></div><div class="product-below"><article class="description-card"><h2>О предложении</h2><p>${safeText(item.description)}</p><dl><div><dt>Состояние</dt><dd>${safeText(item.condition)}</dd></div><div><dt>Категория</dt><dd>${safeText(item.kind)}</dd></div><div><dt>Метки</dt><dd>${item.tags.map(t=>`<a href="catalog.html?q=${encodeURIComponent(t)}">#${safeText(t)}</a>`).join(' ')||'—'}</dd></div></dl></article><aside class="seller-card"><div class="seller-avatar">${safeText(item.owner[0])}</div><div><small>Владелец</small><h3>${safeText(item.owner)}</h3><span>★ ${safeText(item.rating)} · отвечает быстро</span></div><a href="#">Все предложения →</a></aside></div><section class="similar"><div class="section-head"><h2>Похожие предложения</h2><a href="catalog.html">Весь каталог →</a></div><div class="listing-grid">${allListings.filter(x=>String(x.id)!==String(item.id)).slice(0,4).map(card).join('')}</div></section>`;
   productRoot.querySelector('[data-offer]').addEventListener('click', () => document.querySelector('#offerModal').showModal());
   productRoot.querySelector('[data-contact]').addEventListener('click', () => notice('Чат с продавцом откроется после входа.'));
 }
