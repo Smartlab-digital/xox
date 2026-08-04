@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Фото фотоаппарата не загружено</title><desc id="desc">Нейтральная иллюстрация фотоаппарата</desc>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e9e7df"/><stop offset="1" stop-color="#d8ff59"/></linearGradient></defs>
+  <rect width="1200" height="800" rx="48" fill="url(#bg)"/><circle cx="600" cy="390" r="170" fill="#25262c"/><circle cx="600" cy="390" r="105" fill="#f7f5ee"/><circle cx="600" cy="390" r="62" fill="#8b8d90"/><path d="M330 250h150l48-72h175l48 72h120a70 70 0 0170 70v250a70 70 0 01-70 70H330a70 70 0 01-70-70V320a70 70 0 0170-70z" fill="none" stroke="#25262c" stroke-width="34" stroke-linejoin="round"/><circle cx="825" cy="335" r="27" fill="#ff7656"/>
+  <text x="600" y="715" text-anchor="middle" font-family="Arial,sans-serif" font-size="32" font-weight="700" fill="#25262c">ФОТО НЕ ЗАГРУЖЕНО</text>
+</svg>
