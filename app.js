@@ -54,6 +54,38 @@ document.querySelector('#openChain')?.addEventListener('click', () => document.q
 document.querySelectorAll('dialog .close').forEach(x => x.addEventListener('click', () => x.closest('dialog').close()));
 document.querySelectorAll('dialog form').forEach(x => x.addEventListener('submit', e => { e.preventDefault(); x.closest('dialog').close(); notice('Готово! Заявка сохранена.'); }));
 
+const valueSection = document.querySelector('.value-converter');
+if (valueSection) {
+  const examples = [
+    {rate:'≈ 3 000 ₽',fromIcon:'✦',fromTitle:'Стрижка и укладка',fromMeta:'Профессиональная услуга',fromAmount:'3 часа',toIcon:'✂',toTitle:'Ножницы для мастера',toMeta:'Новая профессиональная вещь',toAmount:'3 000 ₽'},
+    {rate:'≈ 4 500 ₽',fromIcon:'◉',fromTitle:'Портретная фотосессия',fromMeta:'Съёмка и обработка фотографий',fromAmount:'1 съёмка',toIcon:'◒',toTitle:'Кресло для чтения',toMeta:'Вещь с новой историей',toAmount:'Обмен'},
+    {rate:'≈ 8 000 ₽',fromIcon:'A',fromTitle:'Уроки английского',fromMeta:'Индивидуальные занятия онлайн',fromAmount:'4 занятия',toIcon:'◇',toTitle:'Городской велосипед',toMeta:'Для поездок каждый день',toAmount:'Обмен'}
+  ];
+  const flow = valueSection.querySelector('#valueFlow');
+  const dots = [...valueSection.querySelectorAll('[data-value-example]')];
+  let currentExample = 0;
+  const fields = ['valueRate','valueFromIcon','valueFromTitle','valueFromMeta','valueFromAmount','valueToIcon','valueToTitle','valueToMeta','valueToAmount'];
+  function showValueExample(index) {
+    currentExample = (index + examples.length) % examples.length;
+    flow.classList.add('is-changing');
+    setTimeout(() => {
+      const item = examples[currentExample];
+      fields.forEach(id => { document.querySelector(`#${id}`).textContent = item[id.replace('value','').replace(/^./, x => x.toLowerCase())]; });
+      dots.forEach((dot,i) => dot.classList.toggle('active',i===currentExample));
+      flow.classList.remove('is-changing');
+    }, 160);
+  }
+  valueSection.querySelector('#valueSwap').addEventListener('click', () => showValueExample(currentExample + 1));
+  dots.forEach(dot => dot.addEventListener('click', () => showValueExample(Number(dot.dataset.valueExample))));
+  valueSection.querySelectorAll('[data-value-card]').forEach(card => {
+    card.addEventListener('pointermove', event => { const box=card.getBoundingClientRect();card.style.setProperty('--rx',`${(event.clientY-box.top)/box.height*-5+2.5}deg`);card.style.setProperty('--ry',`${(event.clientX-box.left)/box.width*5-2.5}deg`); });
+    card.addEventListener('pointerleave', () => { card.style.setProperty('--rx','0deg');card.style.setProperty('--ry','0deg'); });
+  });
+  const revealValue = entries => entries.forEach(entry => { if(entry.isIntersecting){entry.target.classList.add('is-visible');valueObserver.disconnect();} });
+  const valueObserver = new IntersectionObserver(revealValue,{threshold:.28});
+  valueObserver.observe(valueSection);
+}
+
 const catalogSearch = document.querySelector('#catalogSearch');
 const cityFilter = document.querySelector('#cityFilter');
 const sortFilter = document.querySelector('#sortFilter');
