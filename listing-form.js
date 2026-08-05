@@ -17,11 +17,12 @@ Object.entries(savedDraft).forEach(([name,value]) => {
   const field=form.elements[name]; if(field && typeof value==='string') field.value=value;
 });
 
-function isAuthorized() { return Boolean(localStorage.getItem('xox_user')); }
-function updateAuthStatus() { const user=JSON.parse(localStorage.getItem('xox_user') || 'null'); document.querySelector('#authStatus').textContent=user ? `● ${user.name}` : 'Войти'; }
+function isAuthorized() { return Boolean(window.XOXAuth?.currentUser()); }
+function updateAuthStatus() { const user=window.XOXAuth?.currentUser(); document.querySelector('#authStatus').textContent=user ? `● ${user.name}` : 'Войти'; }
 updateAuthStatus();
 function prefillProfileData() { const user=window.XOXAuth?.currentUser();if(!user)return;const values={country:user.country,city:user.city,sellerName:user.name,phone:user.phone,email:user.email,address:user.address};Object.entries(values).forEach(([name,value])=>{const field=form.elements[name];if(field&&value&&!field.value)field.value=value;}); }
 prefillProfileData();
+window.XOXAPI?.ready.then(()=>{updateAuthStatus();prefillProfileData();});
 
 function stepFields(step) { return [...steps[step-1].querySelectorAll('input,select,textarea')].filter(x => !x.closest('.hidden')); }
 function validateStep() {
@@ -56,16 +57,40 @@ function buildPreview() {
   document.querySelector('#listingPreview').innerHTML=`<div class="preview-image" id="previewImageLarge">${listingPhotos[0]?`<img src="${listingPhotos[0]}" alt="Предпросмотр">`:'⌘'}</div><div><span>${escapeHTML(kind)} · ${escapeHTML(operations.join(' · '))}</span><h3>${escapeHTML(data.get('title'))}</h3><b>${data.get('price')?`${Number(data.get('price')).toLocaleString('ru-RU')} ${escapeHTML(data.get('currency'))}`:'Цена не указана'}</b><p>⌖ ${escapeHTML(data.get('city'))} · ${escapeHTML(data.get('category'))}</p><small>${escapeHTML(data.get('description'))}</small></div>`;
 }
 
-function publishListing() {
-  const data=serializeListing(); if(listingPhotos.length){data.images=[...listingPhotos];data.image=listingPhotos[0];} data.id=Date.now(); data.createdAt=new Date().toISOString(); data.views=0; data.likes=0; data.owner=window.XOXAuth?.currentUser()||JSON.parse(localStorage.getItem('xox_user')); const existing=JSON.parse(localStorage.getItem('xox_listings')||'[]'); existing.push(data); localStorage.setItem('xox_listings',JSON.stringify(existing)); localStorage.removeItem('xox_listing_draft'); form.hidden=true; document.querySelector('#publishSuccess').classList.add('show');
+async function publishListing() {
+  const data=serializeListing();
+  data.images=[...listingPhotos];
+  errorBox.textContent='Публикуем предложение…';
+  nextButton.disabled=true;
+  try{
+    const listing=await window.XOXAPI.createListing(data);
+    localStorage.removeItem('xox_listing_draft');
+    form.hidden=true;
+    const success=document.querySelector('#publishSuccess');
+    success.classList.add('show');
+    success.querySelector('a').href=`product.html?id=${encodeURIComponent(`db-${listing.id}`)}`;
+  }catch(error){
+    errorBox.textContent=error.message;
+  }finally{
+    nextButton.disabled=false;
+  }
 }
+
+async function refreshWizardCaptcha(){
+  const target=document.querySelector('#wizardCaptchaQuestion');
+  if(!target)return;
+  target.textContent='Загрузка…';
+  form.elements.regCaptcha.value='';
+  try{const result=await window.XOXAPI.captcha();target.textContent=result.question;}catch(error){target.textContent='Недоступно';errorBox.textContent=error.message;}
+}
+document.querySelector('#wizardCaptchaRefresh')?.addEventListener('click',refreshWizardCaptcha);
 
 nextButton.addEventListener('click',async()=>{
   if(!validateStep()) return; saveDraft();
   if(currentStep<3) return showStep(currentStep+1);
   if(currentStep===3){buildPreview();return showStep(4);}
-  if(currentStep===4){if(isAuthorized()) return publishListing(); registrationRequired=true; const data=new FormData(form); form.elements.regCountry.value=data.get('country');form.elements.regCity.value=data.get('city');form.elements.fullName.value=data.get('sellerName');form.elements.regPhone.value=data.get('phone');form.elements.regEmail.value=data.get('email');form.elements.regAddress.value=data.get('address');form.elements.regWebsite.value=data.get('website');return showStep(5);}
-  if(currentStep===5){const data=new FormData(form);try{const avatarFile=form.elements.avatar.files[0],avatar=avatarFile&&window.XOXAuth?await window.XOXAuth.fileToAvatar(avatarFile):'',profileData={name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity'),address:data.get('regAddress'),website:data.get('regWebsite'),gender:data.get('gender'),age:data.get('age'),bio:data.get('bio'),avatar};if(window.XOXAuth){await window.XOXAuth.registerAccount({...profileData,password:data.get('password')});}else{localStorage.setItem('xox_user',JSON.stringify({id:Date.now(),...profileData}));}updateAuthStatus();publishListing();}catch(error){errorBox.textContent=error.message;}}
+  if(currentStep===4){if(isAuthorized()) return publishListing(); registrationRequired=true; const data=new FormData(form); form.elements.regCountry.value=data.get('country');form.elements.regCity.value=data.get('city');form.elements.fullName.value=data.get('sellerName');form.elements.regPhone.value=data.get('phone');form.elements.regEmail.value=data.get('email');form.elements.regAddress.value=data.get('address');form.elements.regWebsite.value=data.get('website');showStep(5);return refreshWizardCaptcha();}
+  if(currentStep===5){const data=new FormData(form);try{const avatarFile=form.elements.avatar.files[0],avatar=avatarFile&&window.XOXAuth?await window.XOXAuth.fileToAvatar(avatarFile):'',profileData={name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity'),address:data.get('regAddress'),website:data.get('regWebsite'),gender:data.get('gender'),age:data.get('age'),bio:data.get('bio'),avatar,captcha:data.get('regCaptcha')};await window.XOXAuth.registerAccount({...profileData,password:data.get('password')});updateAuthStatus();await publishListing();}catch(error){errorBox.textContent=error.message;refreshWizardCaptcha();}}
 });
 backButton.addEventListener('click',()=>showStep(Math.max(1,currentStep-1)));
 form.addEventListener('input',saveDraft);

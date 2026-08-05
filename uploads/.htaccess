@@ -1,0 +1,12 @@
+Options -Indexes
+RemoveHandler .php .php3 .php4 .php5 .phtml
+RemoveType .php .php3 .php4 .php5 .phtml
+<FilesMatch "\.(php|php3|php4|php5|phtml|phar)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order Allow,Deny
+    Deny from all
+  </IfModule>
+</FilesMatch>

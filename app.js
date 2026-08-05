@@ -10,8 +10,8 @@ const listings = [
 ];
 
 const safeText = value => String(value ?? '').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
-const safeListingImage = value => typeof value==='string'&&(/^(data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+|assets\/listings\/[A-Za-z0-9._-]+)$/.test(value));
-const safeAvatarImage=value=>typeof value==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value)?value:'';
+const safeListingImage = value => typeof value==='string'&&(/^(data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+|assets\/listings\/[A-Za-z0-9._-]+|uploads\/listings\/[A-Za-z0-9._-]+)$/.test(value));
+const safeAvatarImage=value=>typeof value==='string'&&/^(data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+|uploads\/avatars\/[A-Za-z0-9._-]+)$/.test(value)?value:'';
 const cityCoordinates={Москва:[55.7558,37.6173],'Санкт-Петербург':[59.9343,30.3351],Казань:[55.7961,49.1064],Пермь:[58.0105,56.2502],Екатеринбург:[56.8389,60.6057],Новосибирск:[55.0084,82.9357]};
 const listingCoordinates=item=>cityCoordinates[item.city]||null;
 const mapEmbedUrl=item=>{const point=listingCoordinates(item);if(!point)return 'https://www.openstreetmap.org/export/embed.html?bbox=19.6%2C41.1%2C180%2C81.9&layer=mapnik';const [lat,lon]=point,delta=.09,bbox=[lon-delta,lat-delta,lon+delta,lat+delta].join(',');return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${lat}%2C${lon}`;};
@@ -20,17 +20,18 @@ const readStoredListings = () => { try { const stored=JSON.parse(localStorage.ge
 const normalizeStoredListing = item => {
   const operations=Array.isArray(item.operations)?item.operations:[];
   const cameraLike=/фото|камер|instax|fujifilm/i.test(`${item.title||''} ${item.category||''}`),fallback=cameraLike?'assets/listings/fujifilm-instax-mini-12-pink.webp':'assets/listings/listing-placeholder.svg';
-  const storedImages=(Array.isArray(item.images)?item.images:[item.image]).filter(safeListingImage).slice(0,6),images=storedImages.length?storedImages:[fallback],image=images[0],currentUser=window.XOXAuth?.currentUser(),isOwned=Boolean(currentUser&&(String(item.owner?.id||'')===String(currentUser.id)||item.owner?.email===currentUser.email||item.owner?.name===currentUser.name)),isService=item.kind==='service',detail=isService?(Array.isArray(item.servicePlace)&&item.servicePlace.length?item.servicePlace.join(' · '):'Не указано'):(item.condition||'Не указано');
-  return {id:String(item.id),title:item.title||'Новое предложение',type:operations.join(' · ')||(isService?'Услуга':'Обмен'),kind:isService?'Услуги':'Вещи',price:item.price?`${Number(item.price).toLocaleString('ru-RU')} ${item.currency||'RUB'}`:(operations.includes('Даром')?'Бесплатно':'Обмен'),image,images,credit:storedImages.length||cameraLike?'Фото владельца':'Фото не загружено',photoUrl:'#',country:item.country||item.owner?.country||'Россия',city:item.city||'Город не указан',address:item.address||item.owner?.address||'',likes:Number(item.likes)||0,views:Number(item.views)||0,owner:item.owner?.name||item.sellerName||'Участник XOX',ownerAvatar:safeAvatarImage(item.owner?.avatar),rating:'Новый',description:item.description||'Описание появится позже.',tags:String(item.keywords||'').split(',').map(tag=>tag.trim()).filter(Boolean),condition:detail,detailLabel:isService?'Место оказания':'Состояние',published:item.updatedAt?'Обновлено только что':'Только что',createdAt:item.updatedAt||item.createdAt||'',status:item.status||'active',isOwned};
+  const storedImages=(Array.isArray(item.images)?item.images:[item.image]).filter(safeListingImage).slice(0,6),images=storedImages.length?storedImages:[fallback],image=images[0],currentUser=window.XOXAuth?.currentUser(),isOwned=Boolean(item.isOwned||currentUser&&(String(item.owner?.id||'')===String(currentUser.id)||item.owner?.email===currentUser.email||item.owner?.name===currentUser.name)),isService=item.kind==='service',detail=isService?(Array.isArray(item.servicePlace)&&item.servicePlace.length?item.servicePlace.join(' · '):'Не указано'):(item.condition||'Не указано');
+  const remote=Boolean(item.serverId||item.__remote),rawId=String(item.serverId||item.id);return {id:remote?`db-${rawId}`:rawId,serverId:remote?rawId:'',title:item.title||'Новое предложение',type:operations.join(' · ')||(isService?'Услуга':'Обмен'),kind:isService?'Услуги':'Вещи',price:item.price?`${Number(item.price).toLocaleString('ru-RU')} ${item.currency||'RUB'}`:(operations.includes('Даром')?'Бесплатно':'Обмен'),image,images,credit:storedImages.length||cameraLike?'Фото владельца':'Фото не загружено',photoUrl:'#',country:item.country||item.owner?.country||'Россия',city:item.city||'Город не указан',address:item.address||item.owner?.address||'',likes:Number(item.likes)||0,views:Number(item.views)||0,owner:item.owner?.name||item.sellerName||'Участник XOX',ownerAvatar:safeAvatarImage(item.owner?.avatar),rating:'Новый',description:item.description||'Описание появится позже.',tags:String(item.keywords||'').split(',').map(tag=>tag.trim()).filter(Boolean),condition:detail,detailLabel:isService?'Место оказания':'Состояние',published:item.updatedAt?'Обновлено только что':'Только что',createdAt:item.updatedAt||item.createdAt||'',status:item.status||'active',isOwned,isFavorite:Boolean(item.isFavorite)};
 };
 const listingFreshness=item=>Date.parse(item.createdAt)||Number(item.id)||0;
-const userListings=readStoredListings().map(normalizeStoredListing).sort((a,b)=>listingFreshness(b)-listingFreshness(a));
-const allListings=[...userListings,...listings];
+let userListings=readStoredListings().map(normalizeStoredListing).sort((a,b)=>listingFreshness(b)-listingFreshness(a));
+let allListings=[...userListings,...listings];
 window.XOXCatalog=allListings;
+let serverFavoriteIds=new Set();
 const readFavoriteStore=()=>{try{const value=JSON.parse(localStorage.getItem('xox_favorites')||'{}');return value&&typeof value==='object'?value:{};}catch{return{};}};
 const favoriteUserKey=()=>{const user=window.XOXAuth?.currentUser();return user?String(user.id||user.email):'';};
 const favoriteEntries=()=>{const key=favoriteUserKey(),entries=key?readFavoriteStore()[key]:[];return Array.isArray(entries)?entries:[];};
-const favoriteIds=()=>new Set(favoriteEntries().map(item=>String(item.id)));
+const favoriteIds=()=>new Set([...favoriteEntries().map(item=>String(item.id)),...serverFavoriteIds]);
 const isFavorite=id=>favoriteIds().has(String(id));
 const favoriteSnapshot=item=>({id:String(item.id),title:item.title,kind:item.kind,type:item.type,price:item.price,city:item.city,image:typeof item.image==='string'&&item.image.startsWith('assets/')?item.image:''});
 const filterListings=(items,kind)=>kind==='Все'?items:kind==='Избранное'?items.filter(item=>isFavorite(item.id)):items.filter(item=>item.kind===kind||item.type.includes(kind));
@@ -45,7 +46,7 @@ function render(items) {
   grid.innerHTML = items.length ? items.map(card).join('') : '<div class="empty-state"><b>Ничего не нашли</b><span>Попробуйте изменить запрос или фильтры</span></div>';
 }
 const isCatalogPage=Boolean(document.querySelector('.catalog-page'));
-const displayedListings=allListings;
+let displayedListings=allListings;
 render(isCatalogPage?displayedListings:displayedListings.slice(0,4));
 
 document.querySelectorAll('.filters button').forEach(button => button.addEventListener('click', () => {
@@ -75,22 +76,25 @@ document.querySelector('#searchButton')?.addEventListener('click', () => {
 
 document.querySelectorAll('.popular button').forEach(button => button.addEventListener('click', () => { location.href = `catalog.html?q=${encodeURIComponent(button.textContent)}`; }));
 
-const countTargets={thingsCount:allListings.filter(item=>item.kind==='Вещи').length,servicesCount:allListings.filter(item=>item.kind==='Услуги').length,exchangesCount:allListings.filter(item=>item.type.includes('Обмен')).length,nearbyCount:allListings.filter(item=>item.city&&item.city!=='Город не указан').length};
-Object.entries(countTargets).forEach(([id,count])=>{const target=document.querySelector(`#${id}`);if(target)target.textContent=count.toLocaleString('ru-RU');});
-const updateFavoriteCount=()=>{const target=document.querySelector('#favoritesCount');if(target)target.textContent=favoriteEntries().length.toLocaleString('ru-RU');};
+const updateCatalogCounts=()=>{const countTargets={thingsCount:allListings.filter(item=>item.kind==='Вещи').length,servicesCount:allListings.filter(item=>item.kind==='Услуги').length,exchangesCount:allListings.filter(item=>item.type.includes('Обмен')).length,nearbyCount:allListings.filter(item=>item.city&&item.city!=='Город не указан').length};Object.entries(countTargets).forEach(([id,count])=>{const target=document.querySelector(`#${id}`);if(target)target.textContent=count.toLocaleString('ru-RU');});};
+updateCatalogCounts();
+const updateFavoriteCount=()=>{const target=document.querySelector('#favoritesCount');if(target)target.textContent=favoriteIds().size.toLocaleString('ru-RU');};
 updateFavoriteCount();
 const nearbyModal=document.querySelector('#nearbyMapModal');
+let nearbyListings=[];
+let refreshNearbyMap=()=>{};
 if(nearbyModal){
-  const frame=nearbyModal.querySelector('#nearbyMapFrame'),openLink=nearbyModal.querySelector('#nearbyMapOpen'),list=nearbyModal.querySelector('#nearbyMapList'),nearbyListings=allListings.filter(item=>item.city&&item.city!=='Город не указан');
+  const frame=nearbyModal.querySelector('#nearbyMapFrame'),openLink=nearbyModal.querySelector('#nearbyMapOpen'),list=nearbyModal.querySelector('#nearbyMapList');
   const showNearbyLocation=item=>{frame.src=mapEmbedUrl(item);openLink.href=mapOpenUrl(item);list.querySelector('.active')?.classList.remove('active');list.querySelector(`[data-map-id="${CSS.escape(String(item.id))}"]`)?.classList.add('active');};
-  list.innerHTML=nearbyListings.map(item=>`<button type="button" data-map-id="${safeText(item.id)}"><span>${safeText(item.kind==='Услуги'?'✦':'⌘')}</span><b>${safeText(item.title)}</b><small>${safeText(item.address?`${item.city}, ${item.address}`:item.city)} · ${safeText(item.owner)}</small></button>`).join('');
+  refreshNearbyMap=()=>{nearbyListings=allListings.filter(item=>item.city&&item.city!=='Город не указан');list.innerHTML=nearbyListings.map(item=>`<button type="button" data-map-id="${safeText(item.id)}"><span>${safeText(item.kind==='Услуги'?'✦':'⌘')}</span><b>${safeText(item.title)}</b><small>${safeText(item.address?`${item.city}, ${item.address}`:item.city)} · ${safeText(item.owner)}</small></button>`).join('');};
+  refreshNearbyMap();
   list.addEventListener('click',event=>{const button=event.target.closest('[data-map-id]');if(!button)return;const item=nearbyListings.find(listing=>String(listing.id)===button.dataset.mapId);if(item)showNearbyLocation(item);});
   document.querySelector('#openNearbyMap')?.addEventListener('click',()=>{if(nearbyListings.length)showNearbyLocation(nearbyListings[0]);nearbyModal.showModal();});
 }
 
 const toast = document.querySelector('#toast');
 function notice(text) { if (!toast) return; toast.textContent=text; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
-document.addEventListener('click',event=>{const button=event.target.closest('[data-favorite-id]');if(!button)return;event.preventDefault();event.stopPropagation();const user=window.XOXAuth?.currentUser();if(!user){window.XOXAuth?.open();return;}const item=allListings.find(listing=>String(listing.id)===button.dataset.favoriteId);if(!item)return;const store=readFavoriteStore(),key=favoriteUserKey(),entries=Array.isArray(store[key])?store[key]:[],exists=entries.some(entry=>String(entry.id)===String(item.id));store[key]=exists?entries.filter(entry=>String(entry.id)!==String(item.id)):[favoriteSnapshot(item),...entries];localStorage.setItem('xox_favorites',JSON.stringify(store));document.querySelectorAll(`[data-favorite-id="${CSS.escape(String(item.id))}"]`).forEach(heart=>{heart.classList.toggle('active',!exists);heart.textContent=exists?'♡':'♥';heart.setAttribute('aria-pressed',String(!exists));heart.setAttribute('aria-label',exists?'Добавить в избранное':'Убрать из избранного');});updateFavoriteCount();const active=document.querySelector('.filters .active')?.dataset.filter||document.querySelector('.filters .active')?.textContent.trim();if(active==='Избранное'){if(isCatalogPage)renderCatalog();else render(filterListings(displayedListings,'Избранное').slice(0,4));}window.dispatchEvent(new CustomEvent('xox:favorites-change'));notice(exists?'Удалено из избранного':'Добавлено в избранное');});
+document.addEventListener('click',async event=>{const button=event.target.closest('[data-favorite-id]');if(!button)return;event.preventDefault();event.stopPropagation();const user=window.XOXAuth?.currentUser();if(!user){window.XOXAuth?.open();return;}const item=allListings.find(listing=>String(listing.id)===button.dataset.favoriteId);if(!item)return;const exists=isFavorite(item.id),next=!exists;if(item.serverId){try{await window.XOXAPI.setFavorite(item.serverId,next);if(next)serverFavoriteIds.add(String(item.id));else serverFavoriteIds.delete(String(item.id));}catch(error){notice(error.message);return;}}else{const store=readFavoriteStore(),key=favoriteUserKey(),entries=Array.isArray(store[key])?store[key]:[];store[key]=exists?entries.filter(entry=>String(entry.id)!==String(item.id)):[favoriteSnapshot(item),...entries];localStorage.setItem('xox_favorites',JSON.stringify(store));}document.querySelectorAll(`[data-favorite-id="${CSS.escape(String(item.id))}"]`).forEach(heart=>{heart.classList.toggle('active',next);heart.textContent=next?'♥':'♡';heart.setAttribute('aria-pressed',String(next));heart.setAttribute('aria-label',next?'Убрать из избранного':'Добавить в избранное');});updateFavoriteCount();const active=document.querySelector('.filters .active')?.dataset.filter||document.querySelector('.filters .active')?.textContent.trim();if(active==='Избранное'){if(isCatalogPage)renderCatalog();else render(filterListings(displayedListings,'Избранное').slice(0,4));}window.dispatchEvent(new CustomEvent('xox:favorites-change'));notice(next?'Добавлено в избранное':'Удалено из избранного');});
 document.querySelectorAll('[data-modal="listing"]').forEach(x => x.addEventListener('click', () => { location.href = 'add-listing.html'; }));
 document.querySelector('#openChain')?.addEventListener('click', () => document.querySelector('#chainModal')?.showModal());
 document.querySelectorAll('dialog .close').forEach(x => x.addEventListener('click', () => x.closest('dialog').close()));
@@ -152,20 +156,47 @@ if (catalogSearch) {
   document.querySelectorAll('.catalog-tabs button').forEach(button => button.addEventListener('click', renderCatalog));
   renderCatalog();
 }
-window.addEventListener('xox:auth-change',()=>{updateFavoriteCount();const active=document.querySelector('.filters .active')?.dataset.filter||document.querySelector('.filters .active')?.textContent.trim();if(active==='Избранное'){if(isCatalogPage)renderCatalog();else render(filterListings(displayedListings,'Избранное').slice(0,4));}});
+window.addEventListener('xox:auth-change',()=>{loadServerCatalog();});
 window.addEventListener('xox:favorites-change',()=>{document.querySelectorAll('[data-favorite-id]').forEach(heart=>{const favorite=isFavorite(heart.dataset.favoriteId);heart.classList.toggle('active',favorite);heart.textContent=favorite?'♥':'♡';heart.setAttribute('aria-pressed',String(favorite));heart.setAttribute('aria-label',favorite?'Убрать из избранного':'Добавить в избранное');});updateFavoriteCount();const active=document.querySelector('.filters .active')?.dataset.filter||document.querySelector('.filters .active')?.textContent.trim();if(active==='Избранное'){if(isCatalogPage)renderCatalog();else render(filterListings(displayedListings,'Избранное').slice(0,4));}});
 
 const productRoot = document.querySelector('#productRoot');
-if (productRoot) {
+function renderProductPage() {
+  if (!productRoot) return;
   const requestedId=new URLSearchParams(location.search).get('id');
   const item = allListings.find(x => String(x.id) === requestedId) || allListings[0];
   const productImages=Array.isArray(item.images)&&item.images.length?item.images:[item.image];
   const productMapEmbed=mapEmbedUrl(item),productMapOpen=mapOpenUrl(item),productLocation=item.address?`${item.city}, ${item.address}`:item.city;
   document.title = `${item.title} — XOX`;
   productRoot.innerHTML = `<nav class="breadcrumbs"><a href="index.html">Главная</a><span>→</span><a href="catalog.html">Каталог</a><span>→</span><span>${safeText(item.title)}</span></nav><div class="product-layout"><section class="product-gallery"><div class="product-main-art"><img id="productMainImage" src="${productImages[0]}" alt="${safeText(item.title)}"><button class="product-heart">♡ ${item.likes}</button><div class="photo-count">▧ ${item.credit==='Фото не загружено'?'нет фото':`${productImages.length} фото`}</div></div>${productImages.length>1?`<div class="product-thumbnails">${productImages.map((src,index)=>`<button class="${index===0?'active':''}" type="button"><img src="${src}" alt="Фотография ${index+1}"></button>`).join('')}</div>`:''}<div class="product-mini-note"><span>Проверенное объявление <b>✓</b></span><span>${safeText(item.credit)}</span></div></section><section class="product-info"><span class="tag">${safeText(item.type)}</span><h1>${safeText(item.title)}</h1><div class="product-location">⌖ ${safeText(item.city)} · ${safeText(item.published)} · ${item.views} просмотров</div><div class="product-price">${safeText(item.price)}</div><div class="product-actions">${item.isOwned?`<a class="primary-action edit-own-listing" href="edit-listing.html?id=${encodeURIComponent(item.id)}">Редактировать <span>✎</span></a>`:`<button class="primary-action" data-offer>Предложить обмен <span>↔</span></button><button class="secondary-action" data-contact>Написать продавцу</button>`}</div><div class="safe-note">${item.isOwned?'✓ Это ваше объявление — изменения доступны только вам':'🛡 Договаривайтесь и подтверждайте обмен внутри XOX'}</div></section></div><div class="product-below"><article class="description-card"><h2>О предложении</h2><p>${safeText(item.description)}</p><dl><div><dt>${safeText(item.detailLabel||'Состояние')}</dt><dd>${safeText(item.condition)}</dd></div><div><dt>Категория</dt><dd>${safeText(item.kind)}</dd></div><div><dt>Метки</dt><dd>${item.tags.map(t=>`<a href="catalog.html?q=${encodeURIComponent(t)}">#${safeText(t)}</a>`).join(' ')||'—'}</dd></div></dl></article><div class="product-sidebar"><aside class="seller-card"><div class="seller-avatar">${item.ownerAvatar?`<img src="${item.ownerAvatar}" alt="Аватар ${safeText(item.owner)}">`:safeText(item.owner[0])}</div><div><small>Владелец</small><h3>${safeText(item.owner)}</h3><span>★ ${safeText(item.rating)} · отвечает быстро</span></div><a href="catalog.html">Все предложения →</a></aside><aside class="product-map-card"><iframe src="${productMapEmbed}" title="Карта: ${safeText(productLocation)}" loading="lazy"></iframe><div><span>⌖ ${safeText(productLocation)}</span><a href="${productMapOpen}" target="_blank" rel="noopener">Открыть карту ↗</a></div></aside></div></div><section class="similar"><div class="section-head"><h2>Похожие предложения</h2><a href="catalog.html">Весь каталог →</a></div><div class="listing-grid">${allListings.filter(x=>String(x.id)!==String(item.id)).slice(0,4).map(card).join('')}</div></section>`;
-  productRoot.querySelector('[data-offer]')?.addEventListener('click', () => {const user=window.XOXAuth?.currentUser();if(!user)return window.XOXAuth?.open();const modal=document.querySelector('#offerModal'),select=document.querySelector('#offerListingSelect'),message=document.querySelector('#offerMessage'),addLink=document.querySelector('#offerAddListing'),submit=document.querySelector('.offer-submit'),myListings=userListings.filter(listing=>listing.isOwned&&listing.status!=='archive');select.innerHTML=myListings.length?`<option value="">Выберите из своих предложений</option>${myListings.map(listing=>`<option value="${safeText(listing.id)}">${safeText(listing.title)} · ${safeText(listing.kind)}</option>`).join('')}`:'<option value="">Нет активных предложений</option>';select.disabled=!myListings.length;submit.disabled=!myListings.length;addLink.hidden=Boolean(myListings.length);message.textContent=myListings.length?'':'Сначала добавьте вещь или услугу, которую хотите предложить.';modal.showModal();});
+  productRoot.querySelector('[data-offer]')?.addEventListener('click', () => {const user=window.XOXAuth?.currentUser();if(!user)return window.XOXAuth?.open();const modal=document.querySelector('#offerModal'),select=document.querySelector('#offerListingSelect'),message=document.querySelector('#offerMessage'),addLink=document.querySelector('#offerAddListing'),submit=document.querySelector('.offer-submit'),myListings=userListings.filter(listing=>listing.isOwned&&listing.status!=='archive'&&listing.serverId);select.innerHTML=myListings.length?`<option value="">Выберите из своих предложений</option>${myListings.map(listing=>`<option value="${safeText(listing.serverId)}">${safeText(listing.title)} · ${safeText(listing.kind)}</option>`).join('')}`:'<option value="">Нет активных предложений</option>';select.disabled=!myListings.length;submit.disabled=!myListings.length;addLink.hidden=Boolean(myListings.length);message.textContent=myListings.length?'':'Сначала добавьте вещь или услугу, которую хотите предложить.';modal.showModal();});
   productRoot.querySelector('[data-contact]')?.addEventListener('click', () => notice('Чат с продавцом откроется после входа.'));
   productRoot.querySelectorAll('.product-thumbnails button').forEach(button=>button.addEventListener('click',()=>{productRoot.querySelector('#productMainImage').src=button.querySelector('img').src;productRoot.querySelector('.product-thumbnails .active')?.classList.remove('active');button.classList.add('active');}));
-  document.querySelector('#offerForm')?.addEventListener('submit',event=>{event.preventDefault();const select=document.querySelector('#offerListingSelect'),message=document.querySelector('#offerMessage');if(!select.value){message.textContent='Выберите своё предложение из списка.';return;}const offered=select.options[select.selectedIndex].textContent;document.querySelector('#offerModal').close();event.currentTarget.reset();notice(`Предложение «${offered}» отправлено владельцу.`);});
-  window.addEventListener('xox:auth-change',()=>location.reload(),{once:true});
+  const offerForm=document.querySelector('#offerForm');if(offerForm)offerForm.onsubmit=async event=>{event.preventDefault();const select=document.querySelector('#offerListingSelect'),message=document.querySelector('#offerMessage');if(!select.value){message.textContent='Выберите своё предложение из списка.';return;}if(!item.serverId){message.textContent='Обмен доступен для объявлений участников XOX.';return;}const offered=select.options[select.selectedIndex].textContent;try{await window.XOXAPI.offerExchange({fromListingId:select.value,toListingId:item.serverId,message:event.currentTarget.elements.message.value});document.querySelector('#offerModal').close();event.currentTarget.reset();notice(`Предложение «${offered}» отправлено владельцу.`);}catch(error){message.textContent=error.message;}};
 }
+renderProductPage();
+
+let catalogLoading=false;
+async function loadServerCatalog(){
+  if(catalogLoading||!window.XOXAPI)return;
+  catalogLoading=true;
+  try{
+    await window.XOXAPI.ready;
+    const remote=await window.XOXAPI.listings('public');
+    const normalized=remote.map(item=>normalizeStoredListing({...item,__remote:true}));
+    userListings=normalized.filter(item=>item.isOwned).sort((a,b)=>listingFreshness(b)-listingFreshness(a));
+    allListings=[...normalized,...listings];
+    displayedListings=allListings;
+    serverFavoriteIds=new Set(normalized.filter(item=>item.isFavorite).map(item=>String(item.id)));
+    window.XOXCatalog=allListings;
+    updateCatalogCounts();
+    updateFavoriteCount();
+    refreshNearbyMap();
+    if(isCatalogPage)renderCatalog();else render(displayedListings.slice(0,4));
+    renderProductPage();
+  }catch(error){
+    console.warn('Не удалось загрузить общий каталог:',error.message);
+  }finally{
+    catalogLoading=false;
+  }
+}
+loadServerCatalog();
