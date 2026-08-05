@@ -56,10 +56,12 @@
   const refreshCaptcha = async form => {
     const question = form.querySelector('[data-captcha-question]');
     question.textContent = 'Загрузка…';
+    form.dataset.captchaToken = '';
     form.elements.captcha.value = '';
     try {
       const result = await window.XOXAPI.captcha();
       question.textContent = result.question;
+      form.dataset.captchaToken = result.token || '';
     } catch (error) {
       question.textContent = 'Недоступно';
       form.querySelector('.auth-message').textContent = error.message;
@@ -155,7 +157,8 @@
       currentUserState = await window.XOXAPI.login({
         email: loginForm.elements.email.value.trim(),
         password: loginForm.elements.password.value,
-        captcha: loginForm.elements.captcha.value.trim()
+        captcha: loginForm.elements.captcha.value.trim(),
+        captchaToken: loginForm.dataset.captchaToken || ''
       });
       updateButtons(); emitChange(); modal.close(); loginForm.reset();
     } catch (error) {
@@ -194,7 +197,8 @@
         address: registerForm.elements.address.value,
         avatar,
         password: registerForm.elements.password.value,
-        captcha: registerForm.elements.captcha.value.trim()
+        captcha: registerForm.elements.captcha.value.trim(),
+        captchaToken: registerForm.dataset.captchaToken || ''
       });
       registerForm.reset();
       pendingEmail = result.email;
@@ -210,7 +214,7 @@
     const message = recoverForm.querySelector('.auth-message');
     message.textContent = 'Отправляем письмо…';
     try {
-      const result = await window.XOXAPI.requestPasswordReset({email: recoverForm.elements.email.value.trim(), captcha: recoverForm.elements.captcha.value.trim()});
+      const result = await window.XOXAPI.requestPasswordReset({email: recoverForm.elements.email.value.trim(), captcha: recoverForm.elements.captcha.value.trim(), captchaToken: recoverForm.dataset.captchaToken || ''});
       message.textContent = result.message;
       recoverForm.querySelector('.auth-submit').disabled = true;
     } catch (error) {
@@ -224,7 +228,7 @@
     const message = pendingForm.querySelector('.auth-message');
     message.textContent = 'Отправляем письмо…';
     try {
-      const result = await window.XOXAPI.requestVerification({email: pendingForm.elements.email.value, captcha: pendingForm.elements.captcha.value.trim()});
+      const result = await window.XOXAPI.requestVerification({email: pendingForm.elements.email.value, captcha: pendingForm.elements.captcha.value.trim(), captchaToken: pendingForm.dataset.captchaToken || ''});
       message.textContent = result.message;
     } catch (error) {
       message.textContent = error.message;

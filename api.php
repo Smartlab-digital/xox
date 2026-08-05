@@ -280,9 +280,54 @@ function get_user(PDO $pdo, int $id): ?array
     return $row ?: null;
 }
 
+function captcha_secret(): string
+{
+    $cfg = config();
+    $source = isset($cfg['captcha_secret']) && trim((string) $cfg['captcha_secret']) !== ''
+        ? (string) $cfg['captcha_secret']
+        : (string) $cfg['db_password'] . '|xox-captcha-v2';
+    return hash('sha256', $source, true);
+}
+
+function create_captcha_token(int $answer, int $expires): string
+{
+    $nonce = bin2hex(random_bytes(16));
+    $message = $expires . '|' . $nonce . '|' . $answer;
+    return $expires . '.' . $nonce . '.' . hash_hmac('sha256', $message, captcha_secret());
+}
+
 function verify_captcha(array $data): void
 {
     $answer = isset($data['captcha']) ? trim((string) $data['captcha']) : '';
+    $token = isset($data['captchaToken']) ? trim((string) $data['captchaToken']) : '';
+
+    if ($token !== '') {
+        if (!preg_match('/^([0-9]{10})\.([a-f0-9]{32})\.([a-f0-9]{64})$/', $token, $matches)) {
+            fail('Задание CAPTCHA повреждено. Обновите его.', 422, 'captcha_failed');
+        }
+        $expires = (int) $matches[1];
+        if ($expires < time() || $expires > time() + 610) {
+            fail('Срок действия CAPTCHA истёк. Обновите её.', 422, 'captcha_failed');
+        }
+        $valid = false;
+        for ($candidate = 4; $candidate <= 18; $candidate++) {
+            $expectedMac = hash_hmac(
+                'sha256',
+                $expires . '|' . $matches[2] . '|' . $candidate,
+                captcha_secret()
+            );
+            if (hash_equals($expectedMac, $matches[3]) && hash_equals((string) $candidate, $answer)) {
+                $valid = true;
+                break;
+            }
+        }
+        if (!$valid) {
+            fail('Неверный ответ CAPTCHA.', 422, 'captcha_failed');
+        }
+        return;
+    }
+
+    // Compatibility for pages cached before stateless CAPTCHA was deployed.
     $expected = isset($_SESSION['captcha_answer']) ? (string) $_SESSION['captcha_answer'] : '';
     $created = isset($_SESSION['captcha_created']) ? (int) $_SESSION['captcha_created'] : 0;
     unset($_SESSION['captcha_answer'], $_SESSION['captcha_created']);
@@ -519,9 +564,16 @@ if ($action === 'health' && $method === 'GET') {
 if ($action === 'captcha' && $method === 'GET') {
     $a = random_int(2, 9);
     $b = random_int(2, 9);
-    $_SESSION['captcha_answer'] = (string) ($a + $b);
+    $answer = $a + $b;
+    $_SESSION['captcha_answer'] = (string) $answer;
     $_SESSION['captcha_created'] = time();
-    respond(array('question' => $a . ' + ' . $b . ' = ?', 'csrf' => csrf_token()));
+    $expires = time() + 600;
+    respond(array(
+        'question' => $a . ' + ' . $b . ' = ?',
+        'token' => create_captcha_token($answer, $expires),
+        'expiresAt' => $expires,
+        'csrf' => csrf_token()
+    ));
 }
 
 if ($action === 'me' && $method === 'GET') {

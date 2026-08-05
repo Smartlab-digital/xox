@@ -77,12 +77,14 @@ async function publishListing() {
   }
 }
 
+let wizardCaptchaToken='';
 async function refreshWizardCaptcha(){
   const target=document.querySelector('#wizardCaptchaQuestion');
   if(!target)return;
   target.textContent='Загрузка…';
+  wizardCaptchaToken='';
   form.elements.regCaptcha.value='';
-  try{const result=await window.XOXAPI.captcha();target.textContent=result.question;}catch(error){target.textContent='Недоступно';errorBox.textContent=error.message;}
+  try{const result=await window.XOXAPI.captcha();target.textContent=result.question;wizardCaptchaToken=result.token||'';}catch(error){target.textContent='Недоступно';errorBox.textContent=error.message;}
 }
 document.querySelector('#wizardCaptchaRefresh')?.addEventListener('click',refreshWizardCaptcha);
 
@@ -91,7 +93,7 @@ nextButton.addEventListener('click',async()=>{
   if(currentStep<3) return showStep(currentStep+1);
   if(currentStep===3){buildPreview();return showStep(4);}
   if(currentStep===4){if(isAuthorized()) return publishListing(); registrationRequired=true; const data=new FormData(form); form.elements.regCountry.value=data.get('country');form.elements.regCity.value=data.get('city');form.elements.fullName.value=data.get('sellerName');form.elements.regPhone.value=data.get('phone');form.elements.regEmail.value=data.get('email');form.elements.regAddress.value=data.get('address');form.elements.regWebsite.value=data.get('website');showStep(5);return refreshWizardCaptcha();}
-  if(currentStep===5){const data=new FormData(form);try{const avatarFile=form.elements.avatar.files[0],avatar=avatarFile&&window.XOXAuth?await window.XOXAuth.fileToAvatar(avatarFile):'',profileData={name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity'),address:data.get('regAddress'),website:data.get('regWebsite'),gender:data.get('gender'),age:data.get('age'),bio:data.get('bio'),avatar,captcha:data.get('regCaptcha')};const result=await window.XOXAuth.registerAccount({...profileData,password:data.get('password')});errorBox.textContent='Аккаунт создан. Подтвердите email, затем войдите — заполненное объявление сохранено как черновик.';window.XOXAuth.openVerification(result.email);}catch(error){errorBox.textContent=error.message;refreshWizardCaptcha();}}
+  if(currentStep===5){const data=new FormData(form);try{const avatarFile=form.elements.avatar.files[0],avatar=avatarFile&&window.XOXAuth?await window.XOXAuth.fileToAvatar(avatarFile):'',profileData={name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity'),address:data.get('regAddress'),website:data.get('regWebsite'),gender:data.get('gender'),age:data.get('age'),bio:data.get('bio'),avatar,captcha:data.get('regCaptcha'),captchaToken:wizardCaptchaToken};const result=await window.XOXAuth.registerAccount({...profileData,password:data.get('password')});errorBox.textContent='Аккаунт создан. Подтвердите email, затем войдите — заполненное объявление сохранено как черновик.';window.XOXAuth.openVerification(result.email);}catch(error){errorBox.textContent=error.message;refreshWizardCaptcha();}}
 });
 backButton.addEventListener('click',()=>showStep(Math.max(1,currentStep-1)));
 form.addEventListener('input',saveDraft);
