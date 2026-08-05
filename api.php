@@ -495,7 +495,7 @@ if ($method === 'OPTIONS') {
 
 if ($action === 'health' && $method === 'GET') {
     db();
-    respond(array('ok' => true, 'php' => PHP_VERSION, 'database' => true));
+    respond(array('ok' => true, 'php' => PHP_VERSION, 'database' => true, 'mail' => function_exists('mail')));
 }
 
 if ($action === 'captcha' && $method === 'GET') {
