@@ -1,5 +1,11 @@
 Options -Indexes
 
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST} ^www\.xox\.ru$ [NC]
+  RewriteRule ^ http://xox.ru%{REQUEST_URI} [R=301,L]
+</IfModule>
+
 <FilesMatch "^(config(\.local)?\.php|config\.example\.php|deploy-ipipe\.sh)$">
   <IfModule mod_authz_core.c>
     Require all denied
