@@ -308,7 +308,8 @@ function send_xox_mail(string $to, string $subject, string $message): bool
     }
     $cfg = config();
     $from = isset($cfg['mail_from']) ? trim((string) $cfg['mail_from']) : 'noreply@xox.ru';
-    if (!filter_var($from, FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n]/', $from)) {
+    if (!filter_var($from, FILTER_VALIDATE_EMAIL) ||
+        !preg_match('/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,63}$/', $from)) {
         $from = 'noreply@xox.ru';
     }
     $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
@@ -321,7 +322,24 @@ function send_xox_mail(string $to, string $subject, string $message): bool
         'Reply-To: ' . $from,
         'X-Mailer: XOX/PHP'
     );
-    return mail($to, $encodedSubject, $message, implode("\r\n", $headers));
+    // Set the SMTP envelope sender as well as the visible From header. Shared
+    // hosting mail relays use it for bounces and SPF alignment; without it,
+    // messages can be rejected before they ever reach the recipient's spam box.
+    $sent = @mail(
+        $to,
+        $encodedSubject,
+        $message,
+        implode("\r\n", $headers),
+        '-f' . $from
+    );
+    if (!$sent) {
+        $lastError = error_get_last();
+        $details = is_array($lastError) && isset($lastError['message'])
+            ? clean_text($lastError['message'], 500)
+            : 'mail() returned false';
+        error_log('XOX mail queue error: ' . $details);
+    }
+    return $sent;
 }
 
 function create_account_token(PDO $pdo, int $userId, string $purpose, int $lifetime): string
