@@ -7,7 +7,7 @@ const stepLabel = document.querySelector('#stepLabel');
 const errorBox = document.querySelector('#formErrors');
 let currentStep = 1;
 let registrationRequired = false;
-let listingPhotos = [];
+let listingPhotos = (()=>{try{const value=JSON.parse(sessionStorage.getItem('xox_listing_photos')||'[]');return Array.isArray(value)?value.slice(0,6):[];}catch{return [];}})();
 const listingFields = ['kind','title','country','city','category','condition','price','currency','unit','description','keywords','wanted','status','sellerType','sellerName','phone','email','address','website'];
 
 const savedDraft = JSON.parse(localStorage.getItem('xox_listing_draft') || '{}');
@@ -65,6 +65,7 @@ async function publishListing() {
   try{
     const listing=await window.XOXAPI.createListing(data);
     localStorage.removeItem('xox_listing_draft');
+    sessionStorage.removeItem('xox_listing_photos');
     form.hidden=true;
     const success=document.querySelector('#publishSuccess');
     success.classList.add('show');
@@ -90,7 +91,7 @@ nextButton.addEventListener('click',async()=>{
   if(currentStep<3) return showStep(currentStep+1);
   if(currentStep===3){buildPreview();return showStep(4);}
   if(currentStep===4){if(isAuthorized()) return publishListing(); registrationRequired=true; const data=new FormData(form); form.elements.regCountry.value=data.get('country');form.elements.regCity.value=data.get('city');form.elements.fullName.value=data.get('sellerName');form.elements.regPhone.value=data.get('phone');form.elements.regEmail.value=data.get('email');form.elements.regAddress.value=data.get('address');form.elements.regWebsite.value=data.get('website');showStep(5);return refreshWizardCaptcha();}
-  if(currentStep===5){const data=new FormData(form);try{const avatarFile=form.elements.avatar.files[0],avatar=avatarFile&&window.XOXAuth?await window.XOXAuth.fileToAvatar(avatarFile):'',profileData={name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity'),address:data.get('regAddress'),website:data.get('regWebsite'),gender:data.get('gender'),age:data.get('age'),bio:data.get('bio'),avatar,captcha:data.get('regCaptcha')};await window.XOXAuth.registerAccount({...profileData,password:data.get('password')});updateAuthStatus();await publishListing();}catch(error){errorBox.textContent=error.message;refreshWizardCaptcha();}}
+  if(currentStep===5){const data=new FormData(form);try{const avatarFile=form.elements.avatar.files[0],avatar=avatarFile&&window.XOXAuth?await window.XOXAuth.fileToAvatar(avatarFile):'',profileData={name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity'),address:data.get('regAddress'),website:data.get('regWebsite'),gender:data.get('gender'),age:data.get('age'),bio:data.get('bio'),avatar,captcha:data.get('regCaptcha')};const result=await window.XOXAuth.registerAccount({...profileData,password:data.get('password')});errorBox.textContent='Аккаунт создан. Подтвердите email, затем войдите — заполненное объявление сохранено как черновик.';window.XOXAuth.openVerification(result.email);}catch(error){errorBox.textContent=error.message;refreshWizardCaptcha();}}
 });
 backButton.addEventListener('click',()=>showStep(Math.max(1,currentStep-1)));
 form.addEventListener('input',saveDraft);
@@ -98,6 +99,7 @@ function updateListingType(){const service=form.elements.kind.value==='service';
 form.querySelectorAll('input[name="kind"]').forEach(input=>input.addEventListener('change',updateListingType));
 function optimizePhoto(file) { return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=reject;reader.onload=()=>{const image=new Image();image.onerror=reject;image.onload=()=>{const max=720,scale=Math.min(1,max/Math.max(image.width,image.height)),canvas=document.createElement('canvas');canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.66));};image.src=reader.result;};reader.readAsDataURL(file);}); }
 function renderPhotoPreview(){const preview=document.querySelector('#photoPreview');preview.innerHTML=listingPhotos.length?`<div class="photo-preview-grid">${listingPhotos.map((src,index)=>`<img src="${src}" alt="Фотография ${index+1}">`).join('')}</div><b>${listingPhotos.length} из 6</b><small>Нажмите, чтобы добавить ещё</small>`:'＋ <b>Добавить фотографии</b><small>До 6 файлов JPG, PNG или WebP</small>';}
-document.querySelector('#photoInput').addEventListener('change',async event=>{const files=[...event.target.files].slice(0,6-listingPhotos.length);if(!files.length)return;if(files.some(file=>file.size>10*1024*1024)){errorBox.textContent='Каждая фотография должна быть меньше 10 МБ.';event.target.value='';return;}try{for(const file of files)listingPhotos.push(await optimizePhoto(file));renderPhotoPreview();errorBox.textContent=listingPhotos.length===6?'Добавлено максимальное количество фотографий.':'';}catch{errorBox.textContent='Не удалось обработать одну из фотографий.';}event.target.value='';});
+document.querySelector('#photoInput').addEventListener('change',async event=>{const files=[...event.target.files].slice(0,6-listingPhotos.length);if(!files.length)return;if(files.some(file=>file.size>10*1024*1024)){errorBox.textContent='Каждая фотография должна быть меньше 10 МБ.';event.target.value='';return;}try{for(const file of files)listingPhotos.push(await optimizePhoto(file));try{sessionStorage.setItem('xox_listing_photos',JSON.stringify(listingPhotos));}catch{errorBox.textContent='Браузеру не хватило места для сохранения всех фото. Не закрывайте эту вкладку до публикации.';}renderPhotoPreview();if(!errorBox.textContent)errorBox.textContent=listingPhotos.length===6?'Добавлено максимальное количество фотографий.':'';}catch{errorBox.textContent='Не удалось обработать одну из фотографий.';}event.target.value='';});
 updateListingType();
+renderPhotoPreview();
 showStep(1);

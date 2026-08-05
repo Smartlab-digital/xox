@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Безопасность аккаунта — XOX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="inner-page account-action-page">
+  <header class="topbar"><a class="logo" href="index.html"><img src="assets/logo_xox.png" alt="XOX"></a><a class="add-button" href="index.html">На главную</a></header>
+  <main class="account-action-shell">
+    <section class="account-action-card" id="accountActionCard">
+      <div class="account-action-icon" id="accountActionIcon">•••</div>
+      <div class="eyebrow"><i></i> безопасность аккаунта</div>
+      <h1 id="accountActionTitle">Проверяем ссылку…</h1>
+      <p id="accountActionMessage">Пожалуйста, подождите.</p>
+      <form id="resetPasswordForm" hidden>
+        <label>Новый пароль<input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+        <label>Повторите пароль<input name="confirm" type="password" minlength="8" required autocomplete="new-password"></label>
+        <div class="auth-message" role="status"></div>
+        <button class="auth-submit" type="submit">Сохранить новый пароль →</button>
+      </form>
+      <button id="openLoginAfterAction" class="account-action-link" type="button" hidden>Войти в XOX →</button>
+      <a id="backAfterAction" class="account-action-link secondary" href="index.html" hidden>Вернуться на главную</a>
+    </section>
+  </main>
+  <script src="api-client.js"></script><script src="auth.js"></script><script src="account-action.js"></script>
+</body>
+</html>

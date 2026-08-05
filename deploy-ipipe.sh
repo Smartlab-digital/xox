@@ -50,7 +50,9 @@ return array(
     'db_port' => 3306,
     'db_name' => '$DB_NAME',
     'db_user' => '$DB_USER',
-    'db_password' => base64_decode('$DB_PASSWORD_B64')
+    'db_password' => base64_decode('$DB_PASSWORD_B64'),
+    'site_url' => 'http://xox.ru',
+    'mail_from' => 'noreply@xox.ru'
 );
 CONFIG
 chmod 600 "$DEPLOY_TMP/config.php"
@@ -66,7 +68,8 @@ curl "${CURL_FTPS[@]}" --ftp-create-dirs --upload-file "$DEPLOY_TMP/config.php" 
 
 files=(
   .htaccess api.php api-client.js auth.js app.js listing-form.js edit-listing.js
-  index.html catalog.html product.html add-listing.html edit-listing.html styles.css
+  index.html catalog.html product.html add-listing.html edit-listing.html account-action.html styles.css
+  account-action.js
   migration-export.html migration-export.js migration-import.html migration-import.js
   assets/logo_xox.png
   assets/listings/record-player.jpg assets/listings/fujifilm-instax-mini-12-pink.webp

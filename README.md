@@ -15,6 +15,24 @@ The iPipe deployment script uses explicit FTPS and reads passwords from macOS Ke
 ./deploy-ipipe.sh
 ```
 
+## Email confirmation and password recovery
+
+New accounts receive a one-time verification link valid for 48 hours. Password
+reset links are valid for one hour. Only SHA-256 token hashes are stored in the
+database. Accounts created before this feature is deployed are marked verified
+during the one-time schema migration.
+
+The iPipe `config.local.php` may define:
+
+```php
+'site_url' => 'http://xox.ru',
+'mail_from' => 'noreply@xox.ru'
+```
+
+The domain must allow PHP `mail()` and should have SPF, DKIM and DMARC records
+configured before production use. After SSL is enabled, change `site_url` to
+`https://xox.ru` so links in new emails use HTTPS.
+
 ## Перенос старых локальных объявлений
 
 Старая версия GitHub Pages сохраняла пользовательские карточки только в

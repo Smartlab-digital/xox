@@ -133,6 +133,7 @@ function migrate(PDO $pdo): void
             age SMALLINT UNSIGNED NULL,
             bio TEXT NULL,
             avatar_path VARCHAR(255) NOT NULL DEFAULT "",
+            email_verified_at DATETIME NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id), UNIQUE KEY users_email_unique (email)
@@ -196,10 +197,28 @@ function migrate(PDO $pdo): void
             CONSTRAINT exchanges_sender_fk FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
             CONSTRAINT exchanges_from_fk FOREIGN KEY (from_listing_id) REFERENCES listings(id) ON DELETE CASCADE,
             CONSTRAINT exchanges_to_fk FOREIGN KEY (to_listing_id) REFERENCES listings(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+        'CREATE TABLE IF NOT EXISTS account_tokens (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            purpose VARCHAR(40) NOT NULL,
+            token_hash CHAR(64) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            used_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id), UNIQUE KEY account_tokens_hash_unique (token_hash),
+            KEY account_tokens_user_idx (user_id,purpose),
+            CONSTRAINT account_tokens_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
     );
     foreach ($queries as $query) {
         $pdo->exec($query);
+    }
+    $verifiedColumn = $pdo->query('SHOW COLUMNS FROM users LIKE "email_verified_at"')->fetch();
+    if (!$verifiedColumn) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN email_verified_at DATETIME NULL AFTER avatar_path');
+        // Accounts created before email confirmation existed remain usable.
+        $pdo->exec('UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL');
     }
     $done = true;
 }
@@ -248,7 +267,8 @@ function public_user(array $row): array
         'gender' => $row['gender'],
         'age' => $row['age'] === null ? '' : (string) $row['age'],
         'bio' => $row['bio'] ?: '',
-        'avatar' => $row['avatar_path'] ?: ''
+        'avatar' => $row['avatar_path'] ?: '',
+        'emailVerified' => !empty($row['email_verified_at'])
     );
 }
 
@@ -269,6 +289,85 @@ function verify_captcha(array $data): void
     if ($expected === '' || time() - $created > 600 || !hash_equals($expected, $answer)) {
         fail('Неверный ответ CAPTCHA.', 422, 'captcha_failed');
     }
+}
+
+function site_url(): string
+{
+    $cfg = config();
+    $url = isset($cfg['site_url']) ? trim((string) $cfg['site_url']) : 'http://xox.ru';
+    if (!preg_match('#^https?://[A-Za-z0-9.-]+(?::[0-9]+)?(?:/.*)?$#', $url)) {
+        $url = 'http://xox.ru';
+    }
+    return rtrim($url, '/');
+}
+
+function send_xox_mail(string $to, string $subject, string $message): bool
+{
+    if (!function_exists('mail')) {
+        return false;
+    }
+    $cfg = config();
+    $from = isset($cfg['mail_from']) ? trim((string) $cfg['mail_from']) : 'noreply@xox.ru';
+    if (!filter_var($from, FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n]/', $from)) {
+        $from = 'noreply@xox.ru';
+    }
+    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+    $encodedName = '=?UTF-8?B?' . base64_encode('XOX') . '?=';
+    $headers = array(
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 8bit',
+        'From: ' . $encodedName . ' <' . $from . '>',
+        'Reply-To: ' . $from,
+        'X-Mailer: XOX/PHP'
+    );
+    return mail($to, $encodedSubject, $message, implode("\r\n", $headers));
+}
+
+function create_account_token(PDO $pdo, int $userId, string $purpose, int $lifetime): string
+{
+    $pdo->prepare('DELETE FROM account_tokens WHERE user_id=? AND purpose=? AND (used_at IS NOT NULL OR expires_at<NOW())')->execute(array($userId, $purpose));
+    $token = bin2hex(random_bytes(32));
+    $hash = hash('sha256', $token);
+    $expires = date('Y-m-d H:i:s', time() + $lifetime);
+    $query = $pdo->prepare('INSERT INTO account_tokens (user_id,purpose,token_hash,expires_at) VALUES (?,?,?,?)');
+    $query->execute(array($userId, $purpose, $hash, $expires));
+    return $token;
+}
+
+function recently_sent_token(PDO $pdo, int $userId, string $purpose): bool
+{
+    $query = $pdo->prepare('SELECT created_at FROM account_tokens WHERE user_id=? AND purpose=? ORDER BY id DESC LIMIT 1');
+    $query->execute(array($userId, $purpose));
+    $created = $query->fetchColumn();
+    return $created && time() - strtotime((string) $created) < 60;
+}
+
+function send_verification_email(PDO $pdo, array $user): bool
+{
+    $token = create_account_token($pdo, (int) $user['id'], 'verify_email', 48 * 3600);
+    $link = site_url() . '/account-action.html#action=verify&token=' . rawurlencode($token);
+    $message = "Здравствуйте, " . $user['name'] . "!\n\nПодтвердите регистрацию на XOX:\n" . $link . "\n\nСсылка действует 48 часов. Если вы не регистрировались на XOX, просто проигнорируйте письмо.\n";
+    return send_xox_mail($user['email'], 'Подтвердите регистрацию на XOX', $message);
+}
+
+function send_password_reset_email(PDO $pdo, array $user): bool
+{
+    $token = create_account_token($pdo, (int) $user['id'], 'reset_password', 3600);
+    $link = site_url() . '/account-action.html#action=reset&token=' . rawurlencode($token);
+    $message = "Здравствуйте, " . $user['name'] . "!\n\nЧтобы установить новый пароль XOX, откройте ссылку:\n" . $link . "\n\nСсылка действует 1 час. Если вы не запрашивали восстановление, ничего делать не нужно.\n";
+    return send_xox_mail($user['email'], 'Восстановление пароля XOX', $message);
+}
+
+function token_row(PDO $pdo, string $token, string $purpose): ?array
+{
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+        return null;
+    }
+    $query = $pdo->prepare('SELECT t.*,u.email,u.name FROM account_tokens t JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND t.purpose=? AND t.used_at IS NULL AND t.expires_at>=NOW() LIMIT 1 FOR UPDATE');
+    $query->execute(array(hash('sha256', $token), $purpose));
+    $row = $query->fetch();
+    return $row ?: null;
 }
 
 function save_data_image(string $value, string $folder, int $maxBytes): string
@@ -432,17 +531,116 @@ if ($action === 'register' && $method === 'POST') {
     if (!empty($data['avatar'])) {
         $avatar = save_data_image((string) $data['avatar'], 'avatars', 3 * 1024 * 1024);
     }
-    $query = $pdo->prepare('INSERT INTO users (name,email,password_hash,phone,country,city,address,website,gender,age,bio,avatar_path) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+    $query = $pdo->prepare('INSERT INTO users (name,email,password_hash,phone,country,city,address,website,gender,age,bio,avatar_path,email_verified_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NULL)');
     $age = isset($data['age']) && $data['age'] !== '' ? max(14, min(120, (int) $data['age'])) : null;
-    $query->execute(array($name, $email, password_hash($password, PASSWORD_DEFAULT),
-        clean_text(isset($data['phone']) ? $data['phone'] : '', 80), clean_text(isset($data['country']) ? $data['country'] : '', 100),
-        clean_text(isset($data['city']) ? $data['city'] : '', 120), clean_text(isset($data['address']) ? $data['address'] : '', 255),
-        clean_text(isset($data['website']) ? $data['website'] : '', 255), clean_text(isset($data['gender']) ? $data['gender'] : '', 40),
-        $age, clean_text(isset($data['bio']) ? $data['bio'] : '', 3000), $avatar));
-    session_regenerate_id(true);
-    $_SESSION['user_id'] = (int) $pdo->lastInsertId();
-    $_SESSION['csrf'] = bin2hex(random_bytes(24));
-    respond(array('user' => public_user(get_user($pdo, current_user_id())), 'csrf' => csrf_token()), 201);
+    try {
+        $pdo->beginTransaction();
+        $query->execute(array($name, $email, password_hash($password, PASSWORD_DEFAULT),
+            clean_text(isset($data['phone']) ? $data['phone'] : '', 80), clean_text(isset($data['country']) ? $data['country'] : '', 100),
+            clean_text(isset($data['city']) ? $data['city'] : '', 120), clean_text(isset($data['address']) ? $data['address'] : '', 255),
+            clean_text(isset($data['website']) ? $data['website'] : '', 255), clean_text(isset($data['gender']) ? $data['gender'] : '', 40),
+            $age, clean_text(isset($data['bio']) ? $data['bio'] : '', 3000), $avatar));
+        $userId = (int) $pdo->lastInsertId();
+        $user = get_user($pdo, $userId);
+        if (!$user || !send_verification_email($pdo, $user)) {
+            throw new RuntimeException('mail_failed');
+        }
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        remove_uploaded_file($avatar);
+        if ($error instanceof RuntimeException && $error->getMessage() === 'mail_failed') {
+            fail('Не удалось отправить письмо. Проверьте адрес или повторите позже.', 503, 'mail_failed');
+        }
+        throw $error;
+    }
+    respond(array('pending' => true, 'email' => $email, 'message' => 'Письмо с подтверждением отправлено.'), 201);
+}
+
+if ($action === 'request-verification' && $method === 'POST') {
+    require_csrf();
+    $data = request_data();
+    verify_captcha($data);
+    $email = strtolower(clean_text(isset($data['email']) ? $data['email'] : '', 190));
+    $pdo = db();
+    $query = $pdo->prepare('SELECT * FROM users WHERE email=? LIMIT 1');
+    $query->execute(array($email));
+    $user = $query->fetch();
+    if ($user && empty($user['email_verified_at']) && !recently_sent_token($pdo, (int) $user['id'], 'verify_email')) {
+        if (!send_verification_email($pdo, $user)) {
+            error_log('XOX verification mail failed for user ' . $user['id']);
+        }
+    }
+    respond(array('ok' => true, 'message' => 'Если аккаунт ожидает подтверждения, письмо отправлено повторно.'));
+}
+
+if ($action === 'verify-email' && $method === 'POST') {
+    require_csrf();
+    $data = request_data();
+    $token = isset($data['token']) ? strtolower(trim((string) $data['token'])) : '';
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $row = token_row($pdo, $token, 'verify_email');
+        if (!$row) {
+            fail('Ссылка подтверждения недействительна или устарела.', 422, 'invalid_token');
+        }
+        $pdo->prepare('UPDATE users SET email_verified_at=NOW() WHERE id=?')->execute(array((int) $row['user_id']));
+        $pdo->prepare('UPDATE account_tokens SET used_at=NOW() WHERE user_id=? AND purpose="verify_email" AND used_at IS NULL')->execute(array((int) $row['user_id']));
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
+    respond(array('ok' => true, 'email' => $row['email'], 'message' => 'Email подтверждён. Теперь можно войти.'));
+}
+
+if ($action === 'request-password-reset' && $method === 'POST') {
+    require_csrf();
+    $data = request_data();
+    verify_captcha($data);
+    $email = strtolower(clean_text(isset($data['email']) ? $data['email'] : '', 190));
+    $pdo = db();
+    $query = $pdo->prepare('SELECT * FROM users WHERE email=? LIMIT 1');
+    $query->execute(array($email));
+    $user = $query->fetch();
+    if ($user && !empty($user['email_verified_at']) && !recently_sent_token($pdo, (int) $user['id'], 'reset_password')) {
+        if (!send_password_reset_email($pdo, $user)) {
+            error_log('XOX password reset mail failed for user ' . $user['id']);
+        }
+    }
+    respond(array('ok' => true, 'message' => 'Если такой подтверждённый аккаунт существует, письмо отправлено.'));
+}
+
+if ($action === 'reset-password' && $method === 'POST') {
+    require_csrf();
+    $data = request_data();
+    $token = isset($data['token']) ? strtolower(trim((string) $data['token'])) : '';
+    $password = isset($data['password']) ? (string) $data['password'] : '';
+    if (strlen($password) < 8) {
+        fail('Пароль должен содержать не менее 8 символов.', 422, 'validation_failed');
+    }
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $row = token_row($pdo, $token, 'reset_password');
+        if (!$row) {
+            fail('Ссылка восстановления недействительна или устарела.', 422, 'invalid_token');
+        }
+        $pdo->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute(array(password_hash($password, PASSWORD_DEFAULT), (int) $row['user_id']));
+        $pdo->prepare('UPDATE account_tokens SET used_at=NOW() WHERE user_id=? AND purpose="reset_password" AND used_at IS NULL')->execute(array((int) $row['user_id']));
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
+    respond(array('ok' => true, 'message' => 'Новый пароль сохранён. Теперь можно войти.'));
 }
 
 if ($action === 'login' && $method === 'POST') {
@@ -455,6 +653,9 @@ if ($action === 'login' && $method === 'POST') {
     $user = $query->fetch();
     if (!$user || !password_verify(isset($data['password']) ? (string) $data['password'] : '', $user['password_hash'])) {
         fail('Неверный email или пароль.', 401, 'invalid_credentials');
+    }
+    if (empty($user['email_verified_at'])) {
+        fail('Сначала подтвердите email по ссылке из письма.', 403, 'email_unverified');
     }
     session_regenerate_id(true);
     $_SESSION['user_id'] = (int) $user['id'];
@@ -475,7 +676,7 @@ if ($action === 'profile' && $method === 'PUT') {
     $data = request_data();
     $pdo = db();
     $current = get_user($pdo, $userId);
-    $email = strtolower(clean_text(isset($data['email']) ? $data['email'] : $current['email'], 190));
+    $email = $current['email'];
     $name = clean_text(isset($data['name']) ? $data['name'] : $current['name'], 160);
     if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         fail('Укажите имя и корректный email.', 422, 'validation_failed');
