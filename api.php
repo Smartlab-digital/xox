@@ -134,6 +134,8 @@ function migrate(PDO $pdo): void
             bio TEXT NULL,
             avatar_path VARCHAR(255) NOT NULL DEFAULT "",
             email_verified_at DATETIME NULL,
+            password_set_at DATETIME NULL,
+            auth_provider VARCHAR(30) NOT NULL DEFAULT "email",
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id), UNIQUE KEY users_email_unique (email)
@@ -220,6 +222,15 @@ function migrate(PDO $pdo): void
         // Accounts created before email confirmation existed remain usable.
         $pdo->exec('UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL');
     }
+    $passwordSetColumn = $pdo->query('SHOW COLUMNS FROM users LIKE "password_set_at"')->fetch();
+    if (!$passwordSetColumn) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN password_set_at DATETIME NULL AFTER email_verified_at');
+        $pdo->exec('UPDATE users SET password_set_at = created_at WHERE password_hash <> ""');
+    }
+    $providerColumn = $pdo->query('SHOW COLUMNS FROM users LIKE "auth_provider"')->fetch();
+    if (!$providerColumn) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN auth_provider VARCHAR(30) NOT NULL DEFAULT "email" AFTER password_set_at');
+    }
     $done = true;
 }
 
@@ -268,7 +279,9 @@ function public_user(array $row): array
         'age' => $row['age'] === null ? '' : (string) $row['age'],
         'bio' => $row['bio'] ?: '',
         'avatar' => $row['avatar_path'] ?: '',
-        'emailVerified' => !empty($row['email_verified_at'])
+        'emailVerified' => !empty($row['email_verified_at']),
+        'passwordSet' => !empty($row['password_set_at']),
+        'authProvider' => isset($row['auth_provider']) ? $row['auth_provider'] : 'email'
     );
 }
 
@@ -561,6 +574,27 @@ if ($action === 'health' && $method === 'GET') {
     respond(array('ok' => true, 'php' => PHP_VERSION, 'database' => true, 'mail' => function_exists('mail')));
 }
 
+if ($action === 'auth-providers' && $method === 'GET') {
+    $cfg = config();
+    $configured = isset($cfg['social_auth']) && is_array($cfg['social_auth']) ? $cfg['social_auth'] : array();
+    $labels = array('max' => 'MAX', 'ok' => 'Одноклассники', 'vk' => 'VK');
+    $providers = array();
+    $httpsReady = strpos(site_url(), 'https://') === 0;
+    foreach ($labels as $id => $label) {
+        $provider = isset($configured[$id]) && is_array($configured[$id]) ? $configured[$id] : array();
+        $startUrl = isset($provider['start_url']) ? trim((string) $provider['start_url']) : '';
+        $enabled = $httpsReady && !empty($provider['enabled']) && filter_var($startUrl, FILTER_VALIDATE_URL) && strpos($startUrl, 'https://') === 0;
+        $providers[] = array(
+            'id' => $id,
+            'label' => $label,
+            'enabled' => (bool) $enabled,
+            'startUrl' => $enabled ? $startUrl : '',
+            'message' => $httpsReady ? 'Для входа нужно настроить OAuth-приложение.' : 'Социальный вход станет доступен после подключения HTTPS.'
+        );
+    }
+    respond(array('providers' => $providers));
+}
+
 if ($action === 'captcha' && $method === 'GET') {
     $a = random_int(2, 9);
     $b = random_int(2, 9);
@@ -585,31 +619,30 @@ if ($action === 'register' && $method === 'POST') {
     require_csrf();
     $data = request_data();
     verify_captcha($data);
-    $name = clean_text(isset($data['name']) ? $data['name'] : '', 160);
     $email = strtolower(clean_text(isset($data['email']) ? $data['email'] : '', 190));
-    $password = isset($data['password']) ? (string) $data['password'] : '';
-    if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 8) {
-        fail('Укажите имя, корректный email и пароль не короче 8 символов.', 422, 'validation_failed');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        fail('Укажите корректный email.', 422, 'validation_failed');
     }
     $pdo = db();
-    $exists = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+    $exists = $pdo->prepare('SELECT * FROM users WHERE email = ? LIMIT 1');
     $exists->execute(array($email));
-    if ($exists->fetch()) {
+    $existingUser = $exists->fetch();
+    if ($existingUser && !empty($existingUser['email_verified_at'])) {
         fail('Аккаунт с таким email уже существует.', 409, 'email_exists');
     }
-    $avatar = '';
-    if (!empty($data['avatar'])) {
-        $avatar = save_data_image((string) $data['avatar'], 'avatars', 3 * 1024 * 1024);
+    if ($existingUser) {
+        if (!recently_sent_token($pdo, (int) $existingUser['id'], 'verify_email') && !send_verification_email($pdo, $existingUser)) {
+            fail('Не удалось отправить письмо. Проверьте адрес или повторите позже.', 503, 'mail_failed');
+        }
+        respond(array('pending' => true, 'email' => $email, 'message' => 'Письмо с подтверждением отправлено повторно.'));
     }
-    $query = $pdo->prepare('INSERT INTO users (name,email,password_hash,phone,country,city,address,website,gender,age,bio,avatar_path,email_verified_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NULL)');
-    $age = isset($data['age']) && $data['age'] !== '' ? max(14, min(120, (int) $data['age'])) : null;
+    $localPart = preg_replace('/[^A-Za-zА-Яа-яЁё0-9._-]+/u', '', strstr($email, '@', true));
+    $name = $localPart !== '' ? $localPart : 'Участник XOX';
+    $placeholderPassword = password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT);
+    $query = $pdo->prepare('INSERT INTO users (name,email,password_hash,phone,country,city,address,website,gender,age,bio,avatar_path,email_verified_at,password_set_at,auth_provider) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,"email")');
     try {
         $pdo->beginTransaction();
-        $query->execute(array($name, $email, password_hash($password, PASSWORD_DEFAULT),
-            clean_text(isset($data['phone']) ? $data['phone'] : '', 80), clean_text(isset($data['country']) ? $data['country'] : '', 100),
-            clean_text(isset($data['city']) ? $data['city'] : '', 120), clean_text(isset($data['address']) ? $data['address'] : '', 255),
-            clean_text(isset($data['website']) ? $data['website'] : '', 255), clean_text(isset($data['gender']) ? $data['gender'] : '', 40),
-            $age, clean_text(isset($data['bio']) ? $data['bio'] : '', 3000), $avatar));
+        $query->execute(array($name, $email, $placeholderPassword, '', '', '', '', '', '', null, '', ''));
         $userId = (int) $pdo->lastInsertId();
         $user = get_user($pdo, $userId);
         if (!$user || !send_verification_email($pdo, $user)) {
@@ -620,7 +653,6 @@ if ($action === 'register' && $method === 'POST') {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        remove_uploaded_file($avatar);
         if ($error instanceof RuntimeException && $error->getMessage() === 'mail_failed') {
             fail('Не удалось отправить письмо. Проверьте адрес или повторите позже.', 503, 'mail_failed');
         }
@@ -666,7 +698,37 @@ if ($action === 'verify-email' && $method === 'POST') {
         }
         throw $error;
     }
-    respond(array('ok' => true, 'email' => $row['email'], 'message' => 'Email подтверждён. Теперь можно войти.'));
+    session_regenerate_id(true);
+    $_SESSION['user_id'] = (int) $row['user_id'];
+    $_SESSION['csrf'] = bin2hex(random_bytes(24));
+    $verifiedUser = get_user($pdo, (int) $row['user_id']);
+    respond(array(
+        'ok' => true,
+        'email' => $row['email'],
+        'requiresPassword' => empty($verifiedUser['password_set_at']),
+        'user' => public_user($verifiedUser),
+        'csrf' => csrf_token(),
+        'message' => 'Email подтверждён. Придумайте пароль, чтобы завершить регистрацию.'
+    ));
+}
+
+if ($action === 'complete-registration' && $method === 'POST') {
+    require_csrf();
+    $userId = require_user();
+    $data = request_data();
+    $password = isset($data['password']) ? (string) $data['password'] : '';
+    if (strlen($password) < 8) {
+        fail('Пароль должен содержать не менее 8 символов.', 422, 'validation_failed');
+    }
+    $pdo = db();
+    $user = get_user($pdo, $userId);
+    if (!$user || empty($user['email_verified_at'])) {
+        fail('Сначала подтвердите email.', 403, 'email_unverified');
+    }
+    $pdo->prepare('UPDATE users SET password_hash=?,password_set_at=NOW(),auth_provider="email" WHERE id=?')
+        ->execute(array(password_hash($password, PASSWORD_DEFAULT), $userId));
+    $user = get_user($pdo, $userId);
+    respond(array('user' => public_user($user), 'csrf' => csrf_token(), 'message' => 'Регистрация завершена. Теперь можно размещать объявления.'));
 }
 
 if ($action === 'request-password-reset' && $method === 'POST') {
@@ -701,7 +763,7 @@ if ($action === 'reset-password' && $method === 'POST') {
         if (!$row) {
             fail('Ссылка восстановления недействительна или устарела.', 422, 'invalid_token');
         }
-        $pdo->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute(array(password_hash($password, PASSWORD_DEFAULT), (int) $row['user_id']));
+        $pdo->prepare('UPDATE users SET password_hash=?,password_set_at=NOW(),auth_provider="email" WHERE id=?')->execute(array(password_hash($password, PASSWORD_DEFAULT), (int) $row['user_id']));
         $pdo->prepare('UPDATE account_tokens SET used_at=NOW() WHERE user_id=? AND purpose="reset_password" AND used_at IS NULL')->execute(array((int) $row['user_id']));
         $pdo->commit();
     } catch (Throwable $error) {
@@ -721,7 +783,7 @@ if ($action === 'login' && $method === 'POST') {
     $query = db()->prepare('SELECT * FROM users WHERE email = ? LIMIT 1');
     $query->execute(array($email));
     $user = $query->fetch();
-    if (!$user || !password_verify(isset($data['password']) ? (string) $data['password'] : '', $user['password_hash'])) {
+    if (!$user || empty($user['password_set_at']) || !password_verify(isset($data['password']) ? (string) $data['password'] : '', $user['password_hash'])) {
         fail('Неверный email или пароль.', 401, 'invalid_credentials');
     }
     if (empty($user['email_verified_at'])) {

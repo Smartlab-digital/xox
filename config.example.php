@@ -8,5 +8,12 @@ return array(
     'db_user' => 'fox_smat_db4',
     'db_password' => 'CHANGE_ME',
     'site_url' => 'http://xox.ru',
-    'mail_from' => 'noreply@xox.ru'
+    'mail_from' => 'noreply@xox.ru',
+    // Social buttons remain disabled until HTTPS and provider applications are ready.
+    // start_url must point to your provider/identity-broker authorization route.
+    'social_auth' => array(
+        'max' => array('enabled' => false, 'start_url' => ''),
+        'ok' => array('enabled' => false, 'start_url' => ''),
+        'vk' => array('enabled' => false, 'start_url' => '')
+    )
 );

@@ -32,9 +32,9 @@
     <div class="auth-mark">XOX</div><h2>Добро пожаловать</h2><p class="auth-lead">Войдите, чтобы добавлять вещи, сохранять обмены и общаться с участниками.</p>
     <div class="auth-tabs"><button type="button" class="active" data-auth-mode="login">Войти</button><button type="button" data-auth-mode="register">Регистрация</button></div>
     <form id="authLogin" class="auth-form"><label>Email<input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><button type="button" class="auth-text-button" data-auth-mode="recover">Забыли пароль?</button><div class="auth-captcha"><div><small>Проверка, что вы человек</small><b data-captcha-question>Загрузка…</b></div><button type="button" data-captcha-refresh aria-label="Обновить CAPTCHA">↻</button></div><label>Ответ CAPTCHA<input name="captcha" inputmode="numeric" required autocomplete="off"></label><div class="auth-message" role="status"></div><button type="submit" class="auth-submit">Войти →</button></form>
-    <form id="authRegister" class="auth-form" hidden><label>Имя*<input name="name" required autocomplete="name"></label><div class="auth-grid"><label>Страна*<select name="country" required autocomplete="country-name"><option value="">Выберите</option><option>Россия</option><option>Беларусь</option><option>Казахстан</option></select></label><label>Город*<input name="city" required autocomplete="address-level2"></label></div><label>Email*<input name="email" type="email" required autocomplete="email"></label><label>Телефон<input name="phone" type="tel" autocomplete="tel"></label><label>Адрес для карты<input name="address" autocomplete="street-address" placeholder="Необязательно"></label><label class="auth-avatar-upload">Аватар<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"><span>＋ Загрузить фотографию</span></label><div class="auth-grid"><label>Пароль*<input name="password" type="password" minlength="8" required autocomplete="new-password"></label><label>Повторите пароль*<input name="confirm" type="password" minlength="8" required autocomplete="new-password"></label></div><div class="auth-captcha"><div><small>Проверка, что вы человек</small><b data-captcha-question>Загрузка…</b></div><button type="button" data-captcha-refresh aria-label="Обновить CAPTCHA">↻</button></div><label>Ответ CAPTCHA<input name="captcha" inputmode="numeric" required autocomplete="off"></label><div class="auth-message" role="status"></div><button type="submit" class="auth-submit">Создать аккаунт →</button></form>
+    <form id="authRegister" class="auth-form auth-register-minimal" hidden><h3 class="auth-form-title">Быстрая регистрация</h3><p class="auth-form-copy">Начните с email. Имя, город и контакты можно добавить позже в личном кабинете.</p><div class="auth-socials" aria-label="Регистрация через социальную сеть"><button type="button" class="auth-social auth-social-max" data-social-provider="max" disabled title="Загрузка настроек…"><b>MAX</b><span>через MAX</span></button><button type="button" class="auth-social auth-social-ok" data-social-provider="ok" disabled title="Загрузка настроек…"><b>OK</b><span>Одноклассники</span></button><button type="button" class="auth-social auth-social-vk" data-social-provider="vk" disabled title="Загрузка настроек…"><b>VK</b><span>через VK</span></button></div><div class="auth-divider"><span>или по почте</span></div><label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label><div class="auth-captcha"><div><small>Проверка, что вы человек</small><b data-captcha-question>Загрузка…</b></div><button type="button" data-captcha-refresh aria-label="Обновить CAPTCHA">↻</button></div><label>Ответ CAPTCHA<input name="captcha" inputmode="numeric" required autocomplete="off"></label><div class="auth-message" role="status"></div><button type="submit" class="auth-submit">Получить письмо →</button></form>
     <form id="authRecover" class="auth-form" hidden><h3 class="auth-form-title">Восстановление пароля</h3><p class="auth-form-copy">Укажите подтверждённый email — мы отправим ссылку для создания нового пароля.</p><label>Email<input name="email" type="email" autocomplete="email" required></label><div class="auth-captcha"><div><small>Проверка, что вы человек</small><b data-captcha-question>Загрузка…</b></div><button type="button" data-captcha-refresh aria-label="Обновить CAPTCHA">↻</button></div><label>Ответ CAPTCHA<input name="captcha" inputmode="numeric" required autocomplete="off"></label><div class="auth-message" role="status"></div><button type="submit" class="auth-submit">Отправить ссылку →</button><button type="button" class="auth-text-button" data-auth-mode="login">Вернуться ко входу</button></form>
-    <form id="authPending" class="auth-form auth-pending" hidden><div class="auth-mail-icon">✉</div><h3 class="auth-form-title">Проверьте почту</h3><p class="auth-form-copy">Мы отправили ссылку активации на <b data-pending-email></b>. После подтверждения можно войти.</p><input name="email" type="hidden"><div class="auth-captcha"><div><small>Для повторной отправки</small><b data-captcha-question>Загрузка…</b></div><button type="button" data-captcha-refresh aria-label="Обновить CAPTCHA">↻</button></div><label>Ответ CAPTCHA<input name="captcha" inputmode="numeric" required autocomplete="off"></label><div class="auth-message" role="status"></div><button type="submit" class="auth-submit">Отправить письмо повторно</button><button type="button" class="auth-text-button" data-auth-mode="login">Перейти ко входу</button></form>
+    <form id="authPending" class="auth-form auth-pending" hidden><div class="auth-mail-icon">✉</div><h3 class="auth-form-title">Проверьте почту</h3><p class="auth-form-copy">Мы отправили ссылку активации на <b data-pending-email></b>. Откройте её — после подтверждения вы сразу придумаете пароль.</p><input name="email" type="hidden"><div class="auth-captcha"><div><small>Для повторной отправки</small><b data-captcha-question>Загрузка…</b></div><button type="button" data-captcha-refresh aria-label="Обновить CAPTCHA">↻</button></div><label>Ответ CAPTCHA<input name="captcha" inputmode="numeric" required autocomplete="off"></label><div class="auth-message" role="status"></div><button type="submit" class="auth-submit">Отправить письмо повторно</button><button type="button" class="auth-text-button" data-auth-mode="login">Перейти ко входу</button></form>
     <div id="authProfile" class="auth-profile" hidden><div class="auth-profile-head"><div class="auth-avatar" data-auth-avatar><img data-auth-avatar-image alt="Аватар"><span data-auth-avatar-letter>Х</span></div><div><small>Личный кабинет</small><h3 data-auth-name></h3><p data-auth-email></p></div></div><div class="auth-profile-actions"><a href="add-listing.html">＋ Добавить</a><button type="button" data-profile-edit>Редактировать данные</button><button type="button" data-auth-logout>Выйти</button></div><form id="authProfileEdit" class="auth-profile-edit" hidden><div class="auth-grid"><label>Имя*<input name="name" required></label><label>Email<input name="email" type="email" disabled title="Для смены email обратитесь в поддержку"></label><label>Страна<input name="country"></label><label>Город<input name="city"></label><label>Телефон<input name="phone" type="tel"></label><label>Адрес для карты<input name="address"></label><label>Сайт<input name="website" type="url" placeholder="https://"></label><label>Пол<select name="gender"><option value="">Не указывать</option><option>Мужской</option><option>Женский</option></select></label><label>Возраст<input name="age" type="number" min="14" max="120"></label></div><label>О себе<textarea name="bio" rows="3"></textarea></label><label class="auth-avatar-upload">Новый аватар<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"><span>Выбрать фотографию</span></label><div class="auth-message" role="status"></div><div class="auth-edit-actions"><button type="button" data-profile-cancel>Отмена</button><button type="submit">Сохранить →</button></div></form><section class="auth-my-listings"><div class="auth-listing-tabs"><button class="active" type="button" data-profile-list="own">Мои объявления</button><button type="button" data-profile-list="favorites">Избранное <span data-profile-favorites-count>0</span></button></div><div data-auth-listings><div class="auth-listings-empty">Загрузка…</div></div></section></div>
   </dialog>`);
 
@@ -50,6 +50,10 @@
   const updateButtons = () => {
     document.querySelectorAll('.login,#authStatus').forEach(button => {
       button.textContent = currentUserState ? `● ${currentUserState.name}` : 'Войти';
+    });
+    document.querySelectorAll('[data-auth-primary]').forEach(button => {
+      button.textContent = currentUserState ? '＋ Разместить' : 'Регистрация';
+      button.setAttribute('aria-label', currentUserState ? 'Разместить объявление' : 'Зарегистрироваться');
     });
   };
 
@@ -137,6 +141,15 @@
     modal.showModal();
   };
 
+  const openRegistration = () => {
+    if (currentUserState) {
+      location.href = 'add-listing.html';
+      return;
+    }
+    setMode('register');
+    modal.showModal();
+  };
+
   const openVerification = email => {
     pendingEmail = String(email || pendingEmail);
     setMode('pending');
@@ -144,10 +157,19 @@
   };
 
   document.querySelectorAll('.login,#authStatus').forEach(button => button.addEventListener('click', open));
+  document.querySelectorAll('[data-auth-primary]').forEach(button => button.addEventListener('click', openRegistration));
   modal.querySelector('[data-auth-close]').addEventListener('click', () => modal.close());
   modal.addEventListener('click', event => { if (event.target === modal) modal.close(); });
   modal.querySelectorAll('[data-auth-mode]').forEach(button => button.addEventListener('click', () => setMode(button.dataset.authMode)));
   modal.querySelectorAll('[data-captcha-refresh]').forEach(button => button.addEventListener('click', () => refreshCaptcha(button.closest('form'))));
+  modal.querySelectorAll('[data-social-provider]').forEach(button => button.addEventListener('click', () => {
+    const message = registerForm.querySelector('.auth-message');
+    if (button.dataset.startUrl) {
+      location.href = button.dataset.startUrl;
+      return;
+    }
+    message.textContent = button.title || 'Социальный вход ещё не настроен.';
+  }));
 
   loginForm.addEventListener('submit', async event => {
     event.preventDefault();
@@ -181,22 +203,10 @@
   registerForm.addEventListener('submit', async event => {
     event.preventDefault();
     const message = registerForm.querySelector('.auth-message');
-    if (registerForm.elements.password.value !== registerForm.elements.confirm.value) {
-      message.textContent = 'Пароли не совпадают.';
-      return;
-    }
-    message.textContent = 'Создаём аккаунт…';
+    message.textContent = 'Отправляем письмо…';
     try {
-      const avatar = await fileToAvatar(registerForm.elements.avatar.files[0]);
       const result = await registerAccount({
-        name: registerForm.elements.name.value,
         email: registerForm.elements.email.value,
-        phone: registerForm.elements.phone.value,
-        country: registerForm.elements.country.value,
-        city: registerForm.elements.city.value,
-        address: registerForm.elements.address.value,
-        avatar,
-        password: registerForm.elements.password.value,
         captcha: registerForm.elements.captcha.value.trim(),
         captchaToken: registerForm.dataset.captchaToken || ''
       });
@@ -287,7 +297,16 @@
     currentUserState = user;
     updateButtons();
     emitChange();
+    window.XOXAPI.authProviders().then(result => {
+      (result.providers || []).forEach(provider => {
+        const button = registerForm.querySelector(`[data-social-provider="${provider.id}"]`);
+        if (!button) return;
+        button.disabled = !provider.enabled;
+        button.title = provider.enabled ? `Продолжить через ${provider.label}` : provider.message;
+        button.dataset.startUrl = provider.enabled ? provider.startUrl : '';
+      });
+    }).catch(() => {});
   });
 
-  window.XOXAuth = {currentUser: () => currentUserState, open, openVerification, registerAccount, fileToAvatar, refreshCaptcha};
+  window.XOXAuth = {currentUser: () => currentUserState, open, openRegistration, openVerification, registerAccount, fileToAvatar, refreshCaptcha};
 })();

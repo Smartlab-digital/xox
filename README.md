@@ -6,7 +6,10 @@ The production API stores shared users, listings, photos, favorites, and exchang
 
 - `GET api.php?action=listings`
 - `POST api.php?action=listings`
-- `POST api.php?action=register`
+- `POST api.php?action=register` — минимальная регистрация по email
+- `POST api.php?action=verify-email` — подтверждение email и вход в сессию
+- `POST api.php?action=complete-registration` — создание пароля после подтверждения
+- `GET api.php?action=auth-providers` — состояние социальных провайдеров
 - `POST api.php?action=login`
 
 The iPipe deployment script uses explicit FTPS and reads passwords from macOS Keychain, falling back to hidden interactive prompts:

@@ -6,7 +6,6 @@ const progressBar = document.querySelector('#progressBar');
 const stepLabel = document.querySelector('#stepLabel');
 const errorBox = document.querySelector('#formErrors');
 let currentStep = 1;
-let registrationRequired = false;
 let listingPhotos = (()=>{try{const value=JSON.parse(sessionStorage.getItem('xox_listing_photos')||'[]');return Array.isArray(value)?value.slice(0,6):[];}catch{return [];}})();
 const listingFields = ['kind','title','country','city','category','condition','price','currency','unit','description','keywords','wanted','status','sellerType','sellerName','phone','email','address','website'];
 
@@ -17,12 +16,28 @@ Object.entries(savedDraft).forEach(([name,value]) => {
   const field=form.elements[name]; if(field && typeof value==='string') field.value=value;
 });
 
-function isAuthorized() { return Boolean(window.XOXAuth?.currentUser()); }
 function updateAuthStatus() { const user=window.XOXAuth?.currentUser(); document.querySelector('#authStatus').textContent=user ? `● ${user.name}` : 'Войти'; }
 updateAuthStatus();
 function prefillProfileData() { const user=window.XOXAuth?.currentUser();if(!user)return;const values={country:user.country,city:user.city,sellerName:user.name,phone:user.phone,email:user.email,address:user.address};Object.entries(values).forEach(([name,value])=>{const field=form.elements[name];if(field&&value&&!field.value)field.value=value;}); }
-prefillProfileData();
-window.XOXAPI?.ready.then(()=>{updateAuthStatus();prefillProfileData();});
+form.hidden=true;
+const createCard=form.closest('.create-card');
+const progress=document.querySelector('.form-progress');
+function updateListingAccess(user){
+  updateAuthStatus();
+  if(user){
+    form.hidden=false;
+    progress.hidden=false;
+    createCard.querySelector('.listing-auth-gate')?.remove();
+    prefillProfileData();
+    return;
+  }
+  form.hidden=true;
+  progress.hidden=true;
+  if(!createCard.querySelector('.listing-auth-gate')) createCard.insertAdjacentHTML('beforeend','<div class="listing-auth-gate"><span>✦</span><h2>Сначала зарегистрируйтесь</h2><p>После подтверждения почты и создания пароля вы сможете добавлять вещи и услуги.</p><button type="button">Регистрация →</button></div>');
+  createCard.querySelector('.listing-auth-gate button').onclick=()=>window.XOXAuth?.openRegistration();
+}
+window.XOXAPI?.ready.then(user=>{updateListingAccess(user);if(!user)window.XOXAuth?.openRegistration();});
+window.addEventListener('xox:auth-change',event=>updateListingAccess(event.detail));
 
 function stepFields(step) { return [...steps[step-1].querySelectorAll('input,select,textarea')].filter(x => !x.closest('.hidden')); }
 function validateStep() {
@@ -36,9 +51,9 @@ function validateStep() {
 
 function showStep(number) {
   currentStep=number; steps.forEach(x=>x.classList.toggle('active',Number(x.dataset.step)===number));
-  const total=registrationRequired?5:4; progressBar.style.width=`${number/total*100}%`; stepLabel.textContent=`Шаг ${number} из ${total}`;
+  const total=4; progressBar.style.width=`${number/total*100}%`; stepLabel.textContent=`Шаг ${number} из ${total}`;
   backButton.style.visibility=number===1?'hidden':'visible';
-  nextButton.textContent=number===5?'Зарегистрироваться и опубликовать':number===4?'Опубликовать':'Продолжить →';
+  nextButton.textContent=number===4?'Опубликовать':'Продолжить →';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -77,23 +92,11 @@ async function publishListing() {
   }
 }
 
-let wizardCaptchaToken='';
-async function refreshWizardCaptcha(){
-  const target=document.querySelector('#wizardCaptchaQuestion');
-  if(!target)return;
-  target.textContent='Загрузка…';
-  wizardCaptchaToken='';
-  form.elements.regCaptcha.value='';
-  try{const result=await window.XOXAPI.captcha();target.textContent=result.question;wizardCaptchaToken=result.token||'';}catch(error){target.textContent='Недоступно';errorBox.textContent=error.message;}
-}
-document.querySelector('#wizardCaptchaRefresh')?.addEventListener('click',refreshWizardCaptcha);
-
 nextButton.addEventListener('click',async()=>{
   if(!validateStep()) return; saveDraft();
   if(currentStep<3) return showStep(currentStep+1);
   if(currentStep===3){buildPreview();return showStep(4);}
-  if(currentStep===4){if(isAuthorized()) return publishListing(); registrationRequired=true; const data=new FormData(form); form.elements.regCountry.value=data.get('country');form.elements.regCity.value=data.get('city');form.elements.fullName.value=data.get('sellerName');form.elements.regPhone.value=data.get('phone');form.elements.regEmail.value=data.get('email');form.elements.regAddress.value=data.get('address');form.elements.regWebsite.value=data.get('website');showStep(5);return refreshWizardCaptcha();}
-  if(currentStep===5){const data=new FormData(form);try{const avatarFile=form.elements.avatar.files[0],avatar=avatarFile&&window.XOXAuth?await window.XOXAuth.fileToAvatar(avatarFile):'',profileData={name:data.get('fullName'),email:data.get('regEmail'),phone:data.get('regPhone'),country:data.get('regCountry'),city:data.get('regCity'),address:data.get('regAddress'),website:data.get('regWebsite'),gender:data.get('gender'),age:data.get('age'),bio:data.get('bio'),avatar,captcha:data.get('regCaptcha'),captchaToken:wizardCaptchaToken};const result=await window.XOXAuth.registerAccount({...profileData,password:data.get('password')});errorBox.textContent='Аккаунт создан. Подтвердите email, затем войдите — заполненное объявление сохранено как черновик.';window.XOXAuth.openVerification(result.email);}catch(error){errorBox.textContent=error.message;refreshWizardCaptcha();}}
+  if(currentStep===4)return publishListing();
 });
 backButton.addEventListener('click',()=>showStep(Math.max(1,currentStep-1)));
 form.addEventListener('input',saveDraft);

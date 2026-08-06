@@ -13,7 +13,7 @@
   <header class="topbar">
     <a class="logo" href="index.html" aria-label="XOX"><img src="assets/logo_xox.png" alt="XOX"></a>
     <nav><a href="catalog.html">Каталог</a><a href="#how">Как это работает</a><a href="#community">Сообщество</a></nav>
-    <div class="header-actions"><button class="location">⌖ Москва</button><button class="login">Войти</button><button class="add-button" data-modal="listing">＋ Разместить</button></div>
+    <div class="header-actions"><button class="location">⌖ Москва</button><button class="login">Войти</button><button class="add-button" data-auth-primary>Регистрация</button></div>
   </header>
 
   <main id="top">
@@ -78,7 +78,6 @@
   </main>
   <footer><a class="logo" href="index.html"><img src="assets/logo_xox.png" alt="XOX"></a><span>© 2026 XOX. Вещи для людей.</span><div><a href="migration-import.html">Вернуть объявления</a><a href="#">Правила</a><a href="#">Помощь</a><a href="#">ВКонтакте</a></div></footer>
 
-  <dialog id="listingModal"><button class="close" aria-label="Закрыть">×</button><div class="modal-icon">＋</div><h3>Разместить объявление</h3><p>В демо-версии форма покажет, как будет выглядеть процесс публикации.</p><form id="listingForm"><label>Название<input required placeholder="Например, горный велосипед"></label><label>Тип<select><option>Вещь</option><option>Услуга</option></select></label><label>Операция<select><option>Обмен</option><option>Продажа</option><option>Отдам даром</option></select></label><button>Продолжить</button></form></dialog>
   <dialog id="chainModal"><button class="close" aria-label="Закрыть">×</button><div class="modal-icon">↔</div><h3>Ваш маршрут обмена</h3><p>Расскажите, что отдаёте и что хотите получить — XOX подберёт подходящие цепочки до 4 шагов.</p><form><label>У меня есть<input placeholder="Велосипед"></label><label>Я ищу<input placeholder="Мотоцикл"></label><button>Найти варианты</button></form></dialog>
   <dialog id="nearbyMapModal" class="nearby-map-modal"><button class="close" aria-label="Закрыть">×</button><div class="modal-icon">⌖</div><h3>Предложения рядом</h3><p>Выберите объявление, чтобы увидеть расположение владельца на карте.</p><div class="nearby-map-layout"><div class="map-frame"><iframe id="nearbyMapFrame" title="Карта предложений рядом" loading="lazy"></iframe><a id="nearbyMapOpen" href="https://www.openstreetmap.org" target="_blank" rel="noopener">Открыть большую карту ↗</a></div><div id="nearbyMapList" class="nearby-map-list"></div></div></dialog>
   <div id="toast" role="status"></div><script src="api-client.js"></script><script src="auth.js"></script><script src="app.js"></script>
